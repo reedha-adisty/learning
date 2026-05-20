@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arsitektur Von Neumann — Simulasi Interaktif</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0d14;
+    --surface: #111520;
+    --surface2: #161b2a;
+    --border: #1e2a42;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7c3aed;
+    --accent4: #10b981;
+    --accent5: #f59e0b;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --alu: #ff6b35;
+    --cu: #7c3aed;
+    --reg: #00d4ff;
+    --mem: #10b981;
+    --io: #f59e0b;
+    --bus: #ff006e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Grid pattern */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 2rem; }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    padding: 4rem 2rem 3rem;
+    position: relative;
+  }
+  header::after {
+    content: 'VON NEUMANN';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(4rem, 10vw, 9rem);
+    font-weight: 800;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(0,212,255,0.07);
+    white-space: nowrap;
+    pointer-events: none;
+    letter-spacing: 0.1em;
+  }
+  .badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(124,58,237,0.15));
+    border: 1px solid rgba(0,212,255,0.3);
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.3rem 1rem;
+    border-radius: 2px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 40%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 1;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+    font-family: 'Space Mono', monospace;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin: 2rem 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .tab-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.6rem 1.2rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tab-btn.active {
+    border-color: var(--accent);
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+  }
+
+  /* SECTIONS */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .card-title {
+    font-size: 0.7rem;
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+  .card h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .card p {
+    color: var(--text-dim);
+    line-height: 1.8;
+    font-size: 0.95rem;
+  }
+
+  /* PRINSIP LIST */
+  .principle-list { list-style: none; margin-top: 1.5rem; }
+  .principle-list li {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-left: 2px solid var(--accent);
+    background: rgba(0,212,255,0.03);
+    margin-bottom: 0.75rem;
+    border-radius: 0 4px 4px 0;
+  }
+  .principle-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    background: rgba(0,212,255,0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 2px;
+    height: fit-content;
+    white-space: nowrap;
+  }
+  .principle-list li p { margin: 0; }
+
+  /* ARCHITECTURE DIAGRAM */
+  .arch-diagram {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.5rem;
+    margin: 2rem 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .arch-diagram::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 50%, rgba(0,212,255,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .diagram-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 1rem;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .cpu-box {
+    grid-column: 1 / 3;
+    border: 2px solid rgba(124,58,237,0.5);
+    border-radius: 8px;
+    padding: 1.5rem;
+    background: rgba(124,58,237,0.05);
+    position: relative;
+  }
+  .cpu-label {
+    position: absolute;
+    top: -12px;
+    left: 1.5rem;
+    background: var(--surface2);
+    padding: 0 0.75rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--cu);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid rgba(124,58,237,0.4);
+    border-radius: 2px;
+  }
+  .cpu-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .comp-box {
+    border-radius: 6px;
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .comp-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+    background: radial-gradient(ellipse at center, currentColor 0%, transparent 70%);
+  }
+  .comp-box:hover::before { opacity: 0.08; }
+  .comp-box:hover { transform: translateY(-2px); }
+
+  .comp-alu { border: 2px solid var(--alu); background: rgba(255,107,53,0.08); color: var(--alu); }
+  .comp-cu { border: 2px solid var(--cu); background: rgba(124,58,237,0.08); color: var(--cu); }
+  .comp-reg { border: 2px solid var(--reg); background: rgba(0,212,255,0.08); color: var(--reg); }
+  .comp-mem { border: 2px solid var(--mem); background: rgba(16,185,129,0.08); color: var(--mem); }
+  .comp-io { border: 2px solid var(--io); background: rgba(245,158,11,0.08); color: var(--io); }
+
+  .comp-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .comp-name { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.25rem; }
+  .comp-desc { font-size: 0.65rem; font-family: 'Space Mono', monospace; color: var(--text-muted); }
+
+  /* BUS */
+  .bus-container {
+    grid-column: 1 / 3;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255,0,110,0.05);
+    border: 1px dashed rgba(255,0,110,0.4);
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .bus-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--bus);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .bus-line {
+    flex: 1;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--bus), transparent);
+    position: relative;
+  }
+  .bus-arrow {
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--bus);
+    border-top: 2px solid var(--bus);
+    transform: rotate(45deg);
+  }
+
+  /* COMPONENT DETAIL PANEL */
+  .comp-detail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2rem;
+    margin-top: 1.5rem;
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .comp-detail.visible { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .comp-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .comp-detail-icon { font-size: 2.5rem; }
+  .comp-detail-name { font-size: 1.4rem; font-weight: 700; }
+  .comp-detail-full { font-family: 'Space Mono', monospace; font-size: 0.75rem; color: var(--text-muted); }
+
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .feature-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+  }
+  .feature-item h4 { font-size: 0.8rem; margin-bottom: 0.5rem; }
+  .feature-item p { font-size: 0.75rem; color: var(--text-muted); line-height: 1.6; font-family: 'Space Mono', monospace; }
+
+  /* SIMULATION */
+  .sim-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .sim-header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: gap;
+    gap: 1rem;
+  }
+  .sim-title { font-weight: 700; font-size: 1.1rem; }
+  .sim-controls { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+  .btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .btn-primary { background: var(--accent); color: var(--bg); font-weight: 700; }
+  .btn-primary:hover { background: #33ddff; transform: translateY(-1px); }
+  .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: transparent; border: 1px solid rgba(255,107,53,0.5); color: var(--alu); }
+  .btn-danger:hover { background: rgba(255,107,53,0.1); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .sim-body { padding: 2rem; }
+
+  /* MACHINE STATE */
+  .state-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .state-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.3s;
+  }
+  .state-box.active-state {
+    border-color: var(--accent);
+    background: rgba(0,212,255,0.08);
+    box-shadow: 0 0 20px rgba(0,212,255,0.1);
+  }
+  .state-box.highlight-alu { border-color: var(--alu); background: rgba(255,107,53,0.08); box-shadow: 0 0 20px rgba(255,107,53,0.1); }
+  .state-box.highlight-cu { border-color: var(--cu); background: rgba(124,58,237,0.08); box-shadow: 0 0 20px rgba(124,58,237,0.1); }
+  .state-box.highlight-reg { border-color: var(--reg); background: rgba(0,212,255,0.08); box-shadow: 0 0 20px rgba(0,212,255,0.1); }
+  .state-box.highlight-mem { border-color: var(--mem); background: rgba(16,185,129,0.08); box-shadow: 0 0 20px rgba(16,185,129,0.1); }
+
+  .state-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+  .state-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text);
+    min-height: 1.5rem;
+    word-break: break-all;
+  }
+
+  /* INSTRUCTION SET */
+  .inst-program {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  @media(max-width: 600px) { .inst-program { grid-template-columns: 1fr; } }
+
+  .program-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .program-box-header {
+    padding: 0.75rem 1rem;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+  .program-content { padding: 0.5rem; }
+
+  .inst-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    transition: all 0.3s;
+    cursor: default;
+  }
+  .inst-row.current-inst {
+    background: rgba(0,212,255,0.12);
+    border: 1px solid rgba(0,212,255,0.3);
+  }
+  .inst-row.done-inst { opacity: 0.4; }
+
+  .inst-addr {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    min-width: 2.5rem;
+  }
+  .inst-code {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text);
+    flex: 1;
+  }
+  .inst-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+  .inst-badge-load { background: rgba(16,185,129,0.2); color: var(--mem); border: 1px solid rgba(16,185,129,0.3); }
+  .inst-badge-store { background: rgba(16,185,129,0.2); color: var(--mem); border: 1px solid rgba(16,185,129,0.3); }
+  .inst-badge-add { background: rgba(255,107,53,0.2); color: var(--alu); border: 1px solid rgba(255,107,53,0.3); }
+  .inst-badge-sub { background: rgba(255,107,53,0.2); color: var(--alu); border: 1px solid rgba(255,107,53,0.3); }
+  .inst-badge-mul { background: rgba(255,107,53,0.2); color: var(--alu); border: 1px solid rgba(255,107,53,0.3); }
+  .inst-badge-out { background: rgba(245,158,11,0.2); color: var(--io); border: 1px solid rgba(245,158,11,0.3); }
+  .inst-badge-halt { background: rgba(255,255,255,0.1); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); }
+
+  /* MEMORY VIEW */
+  .mem-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+  }
+  .mem-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.5rem;
+    text-align: center;
+    transition: all 0.3s;
+  }
+  .mem-cell.mem-access {
+    border-color: var(--mem);
+    background: rgba(16,185,129,0.1);
+    box-shadow: 0 0 12px rgba(16,185,129,0.2);
+  }
+  .mem-cell.mem-write {
+    border-color: var(--accent2);
+    background: rgba(255,107,53,0.1);
+    box-shadow: 0 0 12px rgba(255,107,53,0.2);
+  }
+  .mem-addr { font-family: 'Space Mono', monospace; font-size: 0.55rem; color: var(--text-muted); }
+  .mem-val { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--text); margin-top: 0.25rem; }
+
+  /* CYCLE LOG */
+  .cycle-log {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 2rem;
+    overflow: hidden;
+  }
+  .cycle-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .cycle-log-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+  .log-entries {
+    padding: 0.75rem;
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .log-entries::-webkit-scrollbar { width: 4px; }
+  .log-entries::-webkit-scrollbar-track { background: transparent; }
+  .log-entries::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-entry {
+    display: flex;
+    gap: 0.75rem;
+    align-items: baseline;
+    animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
+
+  .log-step {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    min-width: 3rem;
+    white-space: nowrap;
+  }
+  .log-phase {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .phase-fetch { background: rgba(0,212,255,0.15); color: var(--accent); }
+  .phase-decode { background: rgba(124,58,237,0.15); color: var(--cu); }
+  .phase-execute { background: rgba(255,107,53,0.15); color: var(--alu); }
+  .phase-store { background: rgba(16,185,129,0.15); color: var(--mem); }
+  .phase-output { background: rgba(245,158,11,0.15); color: var(--io); }
+  .phase-halt { background: rgba(255,255,255,0.1); color: var(--text-muted); }
+
+  .log-msg { font-size: 0.75rem; color: var(--text-dim); flex: 1; }
+
+  /* PHASE INDICATOR */
+  .phase-indicator {
+    display: flex;
+    gap: 0;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .phase-step {
+    flex: 1;
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border-right: 1px solid var(--border);
+    transition: all 0.3s;
+    position: relative;
+  }
+  .phase-step:last-child { border-right: none; }
+  .phase-step.active-phase { color: var(--bg); font-weight: 700; }
+  .phase-step.fetch.active-phase { background: var(--accent); }
+  .phase-step.decode.active-phase { background: var(--cu); }
+  .phase-step.execute.active-phase { background: var(--alu); }
+  .phase-step.store.active-phase { background: var(--mem); }
+
+  /* OUTPUT DISPLAY */
+  .output-display {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--io);
+    min-height: 3rem;
+    margin-top: 1rem;
+  }
+
+  /* CYCLE THEORY SECTION */
+  .cycle-steps {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .cycle-step-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .cycle-step-card:hover { border-color: var(--accent); background: rgba(0,212,255,0.03); }
+  .cycle-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 2.5rem;
+    opacity: 0.5;
+  }
+  .cycle-step-card h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+  .cycle-step-card p { font-size: 0.85rem; color: var(--text-dim); line-height: 1.7; }
+  .cycle-sub {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: var(--surface2);
+    border-radius: 4px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+
+  /* QUIZ SECTION */
+  .quiz-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .quiz-question { font-size: 1rem; font-weight: 600; margin-bottom: 1.5rem; line-height: 1.6; }
+  .quiz-options { display: grid; gap: 0.75rem; }
+  .quiz-opt {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+  }
+  .quiz-opt:hover { border-color: var(--accent); background: rgba(0,212,255,0.05); }
+  .quiz-opt.correct { border-color: var(--mem); background: rgba(16,185,129,0.1); color: var(--mem); }
+  .quiz-opt.wrong { border-color: var(--alu); background: rgba(255,107,53,0.1); color: var(--alu); }
+  .quiz-opt-letter {
+    width: 28px;
+    height: 28px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
+  .quiz-feedback {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    display: none;
+    line-height: 1.6;
+  }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: var(--mem); }
+  .quiz-feedback.wrong { background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.3); color: var(--alu); }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    border-top: 1px solid var(--border);
+    margin-top: 4rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* RESPONSIVE */
+  @media(max-width: 768px) {
+    .cpu-inner { grid-template-columns: 1fr 1fr; }
+    .diagram-grid { grid-template-columns: 1fr; }
+    .cpu-box { grid-column: 1; }
+    .bus-container { grid-column: 1; }
+    .state-grid { grid-template-columns: repeat(2, 1fr); }
+    .mem-grid { grid-template-columns: repeat(3, 1fr); }
+    .inst-program { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="badge">📚 Materi Simulasi Komputer</div>
+    <h1>Arsitektur<br>Von Neumann</h1>
+    <p class="subtitle">// Konsep Program Tersimpan & Siklus Mesin</p>
+  </header>
+
+  <!-- NAV TABS -->
+  <nav class="nav-tabs">
+    <button class="tab-btn active" onclick="showTab('konsep')">01 — Konsep</button>
+    <button class="tab-btn" onclick="showTab('komponen')">02 — Komponen</button>
+    <button class="tab-btn" onclick="showTab('siklus')">03 — Siklus Mesin</button>
+    <button class="tab-btn" onclick="showTab('simulasi')">04 — Simulasi</button>
+    <button class="tab-btn" onclick="showTab('kuis')">05 — Kuis</button>
+  </nav>
+
+  <!-- ===== SECTION 1: KONSEP ===== -->
+  <section id="tab-konsep" class="section active">
+    <div class="card">
+      <div class="card-title">01 — Latar Belakang</div>
+      <h2>Apa itu Arsitektur Von Neumann?</h2>
+      <p>
+        Arsitektur Von Neumann adalah model desain komputer yang diusulkan oleh matematikawan
+        <strong>John von Neumann</strong> pada tahun 1945 dalam dokumen terkenalnya
+        <em>"First Draft of a Report on the EDVAC"</em>. Model ini menjadi fondasi bagi
+        hampir semua komputer digital modern yang kita gunakan hingga saat ini.
+      </p>
+      <p style="margin-top: 1rem;">
+        Inovasi revolusioner dari model ini adalah konsep <strong>Stored-Program Computer</strong>
+        (Komputer dengan Program Tersimpan) — di mana <strong>data</strong> dan <strong>instruksi program</strong>
+        disimpan bersama dalam satu memori yang sama, sehingga program dapat dimodifikasi
+        layaknya data biasa.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Konsep Kunci</div>
+      <h2 style="color: var(--accent);">Stored-Program Concept</h2>
+      <p>Sebelum Von Neumann, komputer seperti ENIAC diprogram dengan cara fisik (memasang kabel).
+      Von Neumann mengusulkan bahwa instruksi program disimpan dalam memori, sama seperti data —
+      revolusi yang memungkinkan komputer menjadi mesin <em>general-purpose</em>.</p>
+
+      <ul class="principle-list">
+        <li>
+          <span class="principle-num">P-01</span>
+          <p><strong>Unified Memory:</strong> Data dan instruksi disimpan dalam memori yang sama menggunakan format biner yang sama. Komputer tidak membedakan keduanya secara fisik.</p>
+        </li>
+        <li>
+          <span class="principle-num">P-02</span>
+          <p><strong>Sequential Execution:</strong> Instruksi dieksekusi secara berurutan satu per satu, kecuali ada instruksi percabangan (jump/branch) yang mengubah alur eksekusi.</p>
+        </li>
+        <li>
+          <span class="principle-num">P-03</span>
+          <p><strong>Binary Representation:</strong> Semua data dan instruksi direpresentasikan dalam format biner (0 dan 1) di dalam memori komputer.</p>
+        </li>
+        <li>
+          <span class="principle-num">P-04</span>
+          <p><strong>Fixed Architecture:</strong> CPU memiliki set instruksi tetap (Instruction Set Architecture/ISA), sementara program yang berbeda menggunakan instruksi-instruksi tersebut secara berbeda.</p>
+        </li>
+        <li>
+          <span class="principle-num">P-05</span>
+          <p><strong>Von Neumann Bottleneck:</strong> Keterbatasan bandwidth antara CPU dan memori karena keduanya berbagi bus yang sama untuk transfer data dan instruksi.</p>
+        </li>
+      </ul>
+    </div>
+
+    <div class="card" style="background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(124,58,237,0.05)); border-color: rgba(0,212,255,0.2);">
+      <div class="card-title">Dampak Historis</div>
+      <h2>Mengapa Ini Penting?</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+        <div style="padding: 1.25rem; background: var(--surface2); border-radius: 6px; border-left: 3px solid var(--accent);">
+          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🖥️</div>
+          <h4 style="margin-bottom: 0.5rem;">ENIAC → EDVAC</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Transisi dari komputer hard-wired ke stored-program yang fleksibel</p>
+        </div>
+        <div style="padding: 1.25rem; background: var(--surface2); border-radius: 6px; border-left: 3px solid var(--cu);">
+          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">⚡</div>
+          <h4 style="margin-bottom: 0.5rem;">General Purpose</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Satu mesin dapat menjalankan berbagai program yang berbeda</p>
+        </div>
+        <div style="padding: 1.25rem; background: var(--surface2); border-radius: 6px; border-left: 3px solid var(--mem);">
+          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🔄</div>
+          <h4 style="margin-bottom: 0.5rem;">Self-Modifying</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Program dapat memodifikasi dirinya sendiri (dasar OS modern)</p>
+        </div>
+        <div style="padding: 1.25rem; background: var(--surface2); border-radius: 6px; border-left: 3px solid var(--io);">
+          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📱</div>
+          <h4 style="margin-bottom: 0.5rem;">Warisan Abadi</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">PC, smartphone, server — semuanya berbasis arsitektur ini</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 2: KOMPONEN ===== -->
+  <section id="tab-komponen" class="section">
+    <div class="card" style="margin-bottom: 0;">
+      <div class="card-title">02 — Diagram Arsitektur</div>
+      <h2>Komponen Utama</h2>
+      <p>Klik pada komponen untuk melihat detail. Von Neumann Architecture terdiri dari 5 komponen utama yang saling terhubung melalui bus sistem.</p>
+    </div>
+
+    <div class="arch-diagram">
+      <div class="diagram-grid">
+        <!-- CPU -->
+        <div class="cpu-box">
+          <div class="cpu-label">Central Processing Unit (CPU)</div>
+          <div class="cpu-inner">
+            <div class="comp-box comp-cu" onclick="showDetail('cu')">
+              <div class="comp-icon">🧠</div>
+              <div class="comp-name">Control Unit</div>
+              <div class="comp-desc">CU</div>
+            </div>
+            <div class="comp-box comp-alu" onclick="showDetail('alu')">
+              <div class="comp-icon">⚙️</div>
+              <div class="comp-name">ALU</div>
+              <div class="comp-desc">Arithmetic Logic Unit</div>
+            </div>
+            <div class="comp-box comp-reg" onclick="showDetail('reg')">
+              <div class="comp-icon">💾</div>
+              <div class="comp-name">Register</div>
+              <div class="comp-desc">PC, IR, MAR, MDR, ACC</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BUS -->
+        <div class="bus-container" style="grid-column: 1/3;">
+          <div class="bus-label">Address Bus</div>
+          <div class="bus-line"></div>
+          <div class="bus-arrow"></div>
+          <div class="bus-label">Data Bus</div>
+          <div class="bus-line"></div>
+          <div class="bus-arrow"></div>
+          <div class="bus-label">Control Bus</div>
+        </div>
+
+        <!-- Memori & IO -->
+        <div class="comp-box comp-mem" onclick="showDetail('mem')" style="padding: 1.5rem;">
+          <div class="comp-icon">🗄️</div>
+          <div class="comp-name">Memori Utama</div>
+          <div class="comp-desc">RAM / Main Memory</div>
+        </div>
+        <div class="comp-box comp-io" onclick="showDetail('io')" style="padding: 1.5rem;">
+          <div class="comp-icon">🖥️</div>
+          <div class="comp-name">I/O Devices</div>
+          <div class="comp-desc">Input / Output</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail Panel -->
+    <div id="detail-panel" class="comp-detail">
+      <div class="comp-detail-header">
+        <div id="dp-icon" class="comp-detail-icon"></div>
+        <div>
+          <div id="dp-name" class="comp-detail-name"></div>
+          <div id="dp-full" class="comp-detail-full"></div>
+        </div>
+      </div>
+      <p id="dp-desc" style="color: var(--text-dim); line-height: 1.8; margin-bottom: 1.5rem;"></p>
+      <div id="dp-features" class="feature-grid"></div>
+    </div>
+
+    <!-- Component Cards below -->
+    <div style="margin-top: 2rem; display: grid; gap: 1rem;">
+      <div class="card" style="border-left: 3px solid var(--cu);">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+          <span style="font-size: 2rem;">🧠</span>
+          <div>
+            <h3 style="color: var(--cu); margin-bottom: 0.5rem;">Control Unit (CU)</h3>
+            <p style="font-size: 0.85rem; color: var(--text-dim);">Otak komputer yang mengoordinasikan seluruh operasi. CU membaca instruksi dari memori, mendekode instruksi tersebut, lalu mengirimkan sinyal kontrol ke komponen lain untuk mengeksekusinya. CU tidak melakukan kalkulasi sendiri, tetapi mengatur siapa yang melakukan apa dan kapan.</p>
+            <div style="margin-top: 1rem; font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--text-muted);">
+              Fungsi: Fetch → Decode → Manage Execution → Control Data Flow
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 3px solid var(--alu);">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+          <span style="font-size: 2rem;">⚙️</span>
+          <div>
+            <h3 style="color: var(--alu); margin-bottom: 0.5rem;">ALU — Arithmetic Logic Unit</h3>
+            <p style="font-size: 0.85rem; color: var(--text-dim);">Komponen yang melakukan semua operasi matematika dan logika. ALU menerima input dari register, melakukan operasi, dan mengembalikan hasilnya ke register (biasanya Accumulator). Setiap kalkulasi yang pernah dilakukan komputer, terjadi di sini.</p>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <span style="font-family: 'Space Mono', monospace; font-size: 0.65rem; padding: 0.2rem 0.5rem; background: rgba(255,107,53,0.15); color: var(--alu); border-radius: 2px;">ADD</span>
+              <span style="font-family: 'Space Mono', monospace; font-size: 0.65rem; padding: 0.2rem 0.5rem; background: rgba(255,107,53,0.15); color: var(--alu); border-radius: 2px;">SUB</span>
+              <span style="font-family: 'Space Mono', monospace; font-size: 0.65rem; padding: 0.2rem 0.5rem; background: rgba(255,107,53,0.15); color: var(--alu); border-radius: 2px;">MUL</span>
+              <span style="font-family: 'Space Mono', monospace; font-size: 0.65rem; padding: 0.2rem 0.5rem; background: rgba(255,107,53,0.15); color: var(--alu); border-radius: 2px;">DIV</span>
+              <span style="font-family: 'Space Mono', monospace; font-size: 0.65rem; padding: 0.2rem 0.5rem; background: rgba(255,107,53,0.15); color: var(--alu); border-radius: 2px;">AND</span>
+              <span style="font-family: 'Space Mono', monospace; font-size: 0.65rem; padding: 0.2rem 0.5rem; background: rgba(255,107,53,0.15); color: var(--alu); border-radius: 2px;">OR</span>
+              <span style="font-family: 'Space Mono', monospace; font-size: 0.65rem; padding: 0.2rem 0.5rem; background: rgba(255,107,53,0.15); color: var(--alu); border-radius: 2px;">NOT</span>
+              <span style="font-family: 'Space Mono', monospace; font-size: 0.65rem; padding: 0.2rem 0.5rem; background: rgba(255,107,53,0.15); color: var(--alu); border-radius: 2px;">CMP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 3px solid var(--reg);">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+          <span style="font-size: 2rem;">💾</span>
+          <div style="width: 100%;">
+            <h3 style="color: var(--reg); margin-bottom: 0.5rem;">Register</h3>
+            <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1rem;">Penyimpanan tercepat dalam komputer, berada di dalam CPU. Register menyimpan data yang sedang aktif diproses. Kapasitasnya sangat kecil tetapi kecepatannya luar biasa (akses dalam nanosecond).</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
+              <div style="padding: 0.75rem; background: var(--surface2); border-radius: 4px; border: 1px solid rgba(0,212,255,0.2);">
+                <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--accent); margin-bottom: 0.25rem;">PC — Program Counter</div>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Menyimpan alamat instruksi berikutnya yang akan dieksekusi</p>
+              </div>
+              <div style="padding: 0.75rem; background: var(--surface2); border-radius: 4px; border: 1px solid rgba(0,212,255,0.2);">
+                <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--accent); margin-bottom: 0.25rem;">IR — Instruction Register</div>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Menyimpan instruksi yang sedang dieksekusi saat ini</p>
+              </div>
+              <div style="padding: 0.75rem; background: var(--surface2); border-radius: 4px; border: 1px solid rgba(0,212,255,0.2);">
+                <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--accent); margin-bottom: 0.25rem;">MAR — Memory Address Reg</div>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Menyimpan alamat memori yang akan diakses</p>
+              </div>
+              <div style="padding: 0.75rem; background: var(--surface2); border-radius: 4px; border: 1px solid rgba(0,212,255,0.2);">
+                <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--accent); margin-bottom: 0.25rem;">MDR — Memory Data Reg</div>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Menyimpan data yang baru dibaca/akan ditulis ke memori</p>
+              </div>
+              <div style="padding: 0.75rem; background: var(--surface2); border-radius: 4px; border: 1px solid rgba(0,212,255,0.2);">
+                <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--accent); margin-bottom: 0.25rem;">ACC — Accumulator</div>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Menyimpan hasil operasi ALU dan salah satu operand</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 3px solid var(--mem);">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+          <span style="font-size: 2rem;">🗄️</span>
+          <div>
+            <h3 style="color: var(--mem); margin-bottom: 0.5rem;">Memori Utama (Main Memory / RAM)</h3>
+            <p style="font-size: 0.85rem; color: var(--text-dim);">Tempat penyimpanan program yang sedang berjalan dan datanya. Diorganisir sebagai array dari lokasi bernomor (alamat). Setiap alamat memori dapat menyimpan data biner. Memori bersifat volatile — isinya hilang saat komputer dimatikan. Dalam arsitektur Von Neumann, instruksi dan data berada dalam ruang memori yang sama.</p>
+            <div style="margin-top: 1rem; font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--text-muted); background: var(--surface2); padding: 1rem; border-radius: 4px;">
+              Alamat 0000: [instruksi LOAD 0010]<br>
+              Alamat 0001: [instruksi ADD  0011]<br>
+              Alamat 0002: [data: 25         ]<br>
+              Alamat 0003: [data: 10         ]
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 3px solid var(--io);">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+          <span style="font-size: 2rem;">🖥️</span>
+          <div>
+            <h3 style="color: var(--io); margin-bottom: 0.5rem;">I/O Devices (Perangkat Input/Output)</h3>
+            <p style="font-size: 0.85rem; color: var(--text-dim);">Antarmuka antara komputer dengan dunia luar. Perangkat input memasukkan data ke komputer, perangkat output mengeluarkan hasil pemrosesan. I/O dikelola oleh CPU melalui instruksi I/O atau mekanisme interrupt.</p>
+            <div style="margin-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+              <div style="padding: 0.75rem; background: var(--surface2); border-radius: 4px;">
+                <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--io); margin-bottom: 0.5rem;">INPUT DEVICES</div>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Keyboard, Mouse, Scanner, Mikrofon, Kamera, Sensor</p>
+              </div>
+              <div style="padding: 0.75rem; background: var(--surface2); border-radius: 4px;">
+                <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--io); margin-bottom: 0.5rem;">OUTPUT DEVICES</div>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Monitor, Printer, Speaker, LED, Network Card</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 3: SIKLUS MESIN ===== -->
+  <section id="tab-siklus" class="section">
+    <div class="card">
+      <div class="card-title">03 — Machine Cycle</div>
+      <h2>Siklus Eksekusi Instruksi</h2>
+      <p>
+        Siklus mesin (machine cycle / instruction cycle) adalah serangkaian langkah yang dilakukan CPU
+        untuk mengeksekusi satu instruksi. Siklus ini diulang terus-menerus selama komputer berjalan.
+        Dikenal juga sebagai siklus <strong>Fetch-Decode-Execute (FDE)</strong>.
+      </p>
+    </div>
+
+    <!-- Visual Pipeline -->
+    <div style="display: flex; gap: 0; margin: 1.5rem 0; overflow: hidden; border-radius: 8px; border: 1px solid var(--border);">
+      <div style="flex:1; padding: 1.25rem 1rem; background: rgba(0,212,255,0.08); border-right: 1px solid var(--border); text-align: center;">
+        <div style="font-size: 1.5rem;">📥</div>
+        <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--accent); margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em;">1. Fetch</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Ambil Instruksi</div>
+      </div>
+      <div style="flex:1; padding: 1.25rem 1rem; background: rgba(124,58,237,0.08); border-right: 1px solid var(--border); text-align: center;">
+        <div style="font-size: 1.5rem;">🔍</div>
+        <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--cu); margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em;">2. Decode</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Terjemahkan</div>
+      </div>
+      <div style="flex:1; padding: 1.25rem 1rem; background: rgba(255,107,53,0.08); border-right: 1px solid var(--border); text-align: center;">
+        <div style="font-size: 1.5rem;">⚡</div>
+        <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--alu); margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em;">3. Execute</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Jalankan</div>
+      </div>
+      <div style="flex:1; padding: 1.25rem 1rem; background: rgba(16,185,129,0.08); text-align: center;">
+        <div style="font-size: 1.5rem;">💾</div>
+        <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--mem); margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em;">4. Store</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Simpan Hasil</div>
+      </div>
+    </div>
+
+    <div class="cycle-steps">
+      <div class="cycle-step-card">
+        <div class="cycle-num">01</div>
+        <div>
+          <h3 style="color: var(--accent);">FETCH — Pengambilan Instruksi</h3>
+          <p>CPU mengambil instruksi berikutnya dari memori utama. Alamat instruksi tersimpan dalam <strong>Program Counter (PC)</strong>. Setelah fetch, PC otomatis bertambah untuk menunjuk ke instruksi berikutnya.</p>
+          <div class="cycle-sub">
+            1. MAR ← PC &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// Kirim alamat ke MAR<br>
+            2. MDR ← Memori[MAR] &nbsp;&nbsp;// Baca isi memori ke MDR<br>
+            3. IR ← MDR &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// Salin instruksi ke IR<br>
+            4. PC ← PC + 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// Increment program counter
+          </div>
+        </div>
+      </div>
+
+      <div class="cycle-step-card">
+        <div class="cycle-num">02</div>
+        <div>
+          <h3 style="color: var(--cu);">DECODE — Penerjemahan Instruksi</h3>
+          <p>Control Unit menganalisis instruksi yang ada di <strong>Instruction Register (IR)</strong>. CU memecah instruksi menjadi opcode (kode operasi) dan operand (data/alamat), lalu menghasilkan sinyal kontrol yang diperlukan.</p>
+          <div class="cycle-sub">
+            IR berisi: [OPCODE | OPERAND]<br>
+            Contoh: &nbsp;&nbsp;&nbsp;[ADD &nbsp;&nbsp;| ADDR_0010]<br>
+            ↓<br>
+            CU → Sinyal ke ALU: "siapkan operasi ADD"<br>
+            CU → Sinyal ke Memori: "baca alamat 0010"
+          </div>
+        </div>
+      </div>
+
+      <div class="cycle-step-card">
+        <div class="cycle-num">03</div>
+        <div>
+          <h3 style="color: var(--alu);">EXECUTE — Eksekusi Instruksi</h3>
+          <p>Instruksi benar-benar dijalankan. Untuk instruksi aritmetika/logika, <strong>ALU</strong> melakukan kalkulasi. Untuk instruksi memori, data dibaca/ditulis. Untuk instruksi I/O, data dikirim ke/dari perangkat. Untuk jump, PC diperbarui ke alamat baru.</p>
+          <div class="cycle-sub">
+            Tipe Eksekusi:<br>
+            • Aritmetika : ALU melakukan ADD/SUB/MUL/DIV<br>
+            • Logika &nbsp;&nbsp;&nbsp;&nbsp;: ALU melakukan AND/OR/NOT/XOR<br>
+            • Memori &nbsp;&nbsp;&nbsp;&nbsp;: CPU membaca/menulis ke RAM<br>
+            • Jump &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: PC ← alamat tujuan<br>
+            • I/O &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: Transfer data ke/dari perangkat
+          </div>
+        </div>
+      </div>
+
+      <div class="cycle-step-card">
+        <div class="cycle-num">04</div>
+        <div>
+          <h3 style="color: var(--mem);">STORE — Penyimpanan Hasil</h3>
+          <p>Hasil dari eksekusi disimpan kembali. Bisa ke register (Accumulator), memori utama, atau dikirim ke perangkat output. Setelah ini, siklus kembali ke fase Fetch untuk instruksi berikutnya — terus berulang hingga ada instruksi HALT.</p>
+          <div class="cycle-sub">
+            Hasil → Accumulator (register internal)<br>
+            atau<br>
+            Hasil → Memori[alamat] (via STORE instruction)<br>
+            atau<br>
+            Hasil → Output Device (via OUT instruction)<br>
+            ↓<br>
+            → Kembali ke FETCH (siklus berikutnya)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem; background: rgba(245,158,11,0.05); border-color: rgba(245,158,11,0.2);">
+      <div class="card-title">Catatan Penting</div>
+      <h2 style="color: var(--io);">Satu Instruksi = Beberapa Clock Cycle</h2>
+      <p>Meskipun kita menyederhanakannya menjadi 4 fase, dalam CPU modern satu instruksi bisa membutuhkan beberapa <strong>clock cycle</strong>. Teknik seperti <strong>pipelining</strong> memungkinkan CPU mengeksekusi beberapa instruksi secara tumpang tindih (overlapping) untuk meningkatkan throughput.</p>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 4: SIMULASI ===== -->
+  <section id="tab-simulasi" class="section">
+    <div class="sim-container">
+      <div class="sim-header">
+        <div>
+          <div class="sim-title">🖥️ Simulasi Eksekusi CPU</div>
+          <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--text-muted); margin-top: 0.25rem;">Program: Hitung (A + B) × C, output hasilnya</div>
+        </div>
+        <div class="sim-controls">
+          <button class="btn btn-primary" id="btn-step" onclick="stepExecution()">▶ Step</button>
+          <button class="btn btn-secondary" id="btn-auto" onclick="autoRun()">⏩ Auto</button>
+          <button class="btn btn-danger" onclick="resetSim()">↺ Reset</button>
+        </div>
+      </div>
+
+      <div class="sim-body">
+        <!-- Phase indicator -->
+        <div class="phase-indicator">
+          <div class="phase-step fetch" id="phase-fetch">📥 Fetch</div>
+          <div class="phase-step decode" id="phase-decode">🔍 Decode</div>
+          <div class="phase-step execute" id="phase-execute">⚡ Execute</div>
+          <div class="phase-step store" id="phase-store">💾 Store</div>
+        </div>
+
+        <!-- State -->
+        <div class="state-grid">
+          <div class="state-box" id="state-pc">
+            <div class="state-label">Program Counter (PC)</div>
+            <div class="state-value" id="val-pc">0000</div>
+          </div>
+          <div class="state-box" id="state-ir">
+            <div class="state-label">Instruction Register (IR)</div>
+            <div class="state-value" id="val-ir">—</div>
+          </div>
+          <div class="state-box" id="state-mar">
+            <div class="state-label">MAR</div>
+            <div class="state-value" id="val-mar">—</div>
+          </div>
+          <div class="state-box" id="state-mdr">
+            <div class="state-label">MDR</div>
+            <div class="state-value" id="val-mdr">—</div>
+          </div>
+          <div class="state-box" id="state-acc">
+            <div class="state-label">Accumulator (ACC)</div>
+            <div class="state-value" id="val-acc">0</div>
+          </div>
+          <div class="state-box" id="state-alu">
+            <div class="state-label">ALU Operation</div>
+            <div class="state-value" id="val-alu">—</div>
+          </div>
+        </div>
+
+        <!-- Program & Memory -->
+        <div class="inst-program">
+          <div class="program-box">
+            <div class="program-box-header">📋 Program dalam Memori (Instruksi)</div>
+            <div class="program-content" id="prog-view"></div>
+          </div>
+          <div class="program-box">
+            <div class="program-box-header">🗄️ Memori Data</div>
+            <div style="padding: 0.75rem;">
+              <div class="mem-grid" id="mem-view"></div>
+              <div style="margin-top: 1rem;">
+                <div class="state-label" style="margin-bottom: 0.5rem;">Output Device:</div>
+                <div class="output-display" id="output-display">// Menunggu output...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Log -->
+        <div class="cycle-log">
+          <div class="cycle-log-header">
+            <div class="cycle-log-title">📊 Execution Log</div>
+            <div style="font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--text-muted);" id="cycle-counter">Siklus: 0</div>
+          </div>
+          <div class="log-entries" id="log-entries">
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted); font-family: 'Space Mono', monospace; font-size: 0.7rem;">
+              Tekan ▶ Step atau ⏩ Auto untuk memulai simulasi
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION 5: KUIS ===== -->
+  <section id="tab-kuis" class="section">
+    <div class="card" style="text-align: center; padding: 3rem;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
+      <h2 style="margin-bottom: 0.5rem;">Uji Pemahaman</h2>
+      <p>Jawab pertanyaan berikut untuk menguji pemahamanmu tentang Arsitektur Von Neumann</p>
+      <div id="quiz-score" style="margin-top: 1.5rem; font-family: 'Space Mono', monospace; font-size: 0.8rem; color: var(--text-muted);"></div>
+    </div>
+
+    <div id="quiz-container"></div>
+  </section>
+
+</div>
+
+<footer>
+  <div>SIMULASI ARSITEKTUR VON NEUMANN — MATERI PENDIDIKAN INTERAKTIF</div>
+  <div style="margin-top: 0.5rem; opacity: 0.5;">Arsitektur Von Neumann (1945) · John von Neumann · EDVAC Report</div>
+</footer>
+
+<script>
+// ===== TAB NAVIGATION =====
+function showTab(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ===== COMPONENT DETAILS =====
+const compData = {
+  cu: {
+    icon: '🧠', name: 'Control Unit', full: 'Satuan Kontrol — Otak Komputer',
+    color: 'var(--cu)',
+    desc: 'Control Unit adalah komponen yang mengoordinasikan semua operasi dalam CPU. CU membaca instruksi dari memori, mendekodenya, dan mengirimkan sinyal kontrol ke ALU, memori, dan I/O. CU tidak melakukan kalkulasi sendiri — ia adalah "direktur" yang memberi tahu komponen lain apa yang harus dilakukan.',
+    features: [
+      { title: 'Instruction Fetch', body: 'Mengambil instruksi dari memori menggunakan alamat di PC' },
+      { title: 'Instruction Decode', body: 'Menganalisis opcode dan operand dari instruksi di IR' },
+      { title: 'Control Signals', body: 'Menghasilkan sinyal kontrol untuk ALU, memori, dan I/O' },
+      { title: 'Sequence Control', body: 'Mengatur urutan eksekusi dan mengelola program counter' }
+    ]
+  },
+  alu: {
+    icon: '⚙️', name: 'ALU', full: 'Arithmetic Logic Unit — Unit Aritmetika & Logika',
+    color: 'var(--alu)',
+    desc: 'ALU adalah komponen yang melakukan semua operasi matematika (penjumlahan, pengurangan, perkalian, pembagian) dan logika (AND, OR, NOT, XOR, perbandingan). ALU menerima input dari register, melakukan operasi berdasarkan sinyal dari CU, dan mengembalikan hasil ke Accumulator.',
+    features: [
+      { title: 'Arithmetic Ops', body: 'ADD, SUB, MUL, DIV, INC, DEC, MOD' },
+      { title: 'Logical Ops', body: 'AND, OR, NOT, XOR, NAND, NOR' },
+      { title: 'Shift Ops', body: 'Shift kiri/kanan, rotasi bit' },
+      { title: 'Comparison', body: 'CMP, menghasilkan flag Z, N, C, V' }
+    ]
+  },
+  reg: {
+    icon: '💾', name: 'Register', full: 'Register — Penyimpanan Tercepat dalam CPU',
+    color: 'var(--reg)',
+    desc: 'Register adalah penyimpanan data berukuran kecil namun tercepat dalam sistem komputer, berada langsung di dalam CPU. Register menyimpan data yang sedang diproses, alamat memori, dan status operasi. Akses register jauh lebih cepat daripada akses ke RAM.',
+    features: [
+      { title: 'PC (Program Counter)', body: 'Alamat instruksi berikutnya' },
+      { title: 'IR (Instruction Register)', body: 'Instruksi yang sedang dieksekusi' },
+      { title: 'MAR / MDR', body: 'Alamat dan data memori yang diakses' },
+      { title: 'ACC (Accumulator)', body: 'Hasil operasi ALU' }
+    ]
+  },
+  mem: {
+    icon: '🗄️', name: 'Memori Utama', full: 'Main Memory / RAM — Random Access Memory',
+    color: 'var(--mem)',
+    desc: 'Memori utama (RAM) menyimpan program yang sedang berjalan beserta datanya. Dalam arsitektur Von Neumann, instruksi dan data berada dalam ruang memori yang sama. Memori diorganisir sebagai array sel yang masing-masing memiliki alamat unik. Bersifat volatile (isi hilang saat mati).',
+    features: [
+      { title: 'Stored Program', body: 'Instruksi & data dalam memori yang sama' },
+      { title: 'Addressable', body: 'Setiap sel memiliki alamat unik (0, 1, 2, ...)' },
+      { title: 'Read/Write', body: 'CPU dapat membaca dan menulis ke memori' },
+      { title: 'Volatile', body: 'Isi hilang saat tidak ada daya listrik' }
+    ]
+  },
+  io: {
+    icon: '🖥️', name: 'I/O Devices', full: 'Input/Output Devices — Perangkat Masukan/Keluaran',
+    color: 'var(--io)',
+    desc: 'Perangkat I/O adalah antarmuka antara komputer dan dunia luar. Input memungkinkan data masuk ke komputer (keyboard, mouse, sensor), output memungkinkan hasil keluar (monitor, printer, speaker). I/O dikelola CPU melalui instruksi khusus atau mekanisme interrupt.',
+    features: [
+      { title: 'Input Devices', body: 'Keyboard, mouse, scanner, mikrofon, kamera' },
+      { title: 'Output Devices', body: 'Monitor, printer, speaker, proyektor' },
+      { title: 'I/O Interface', body: 'Port, buffer, controller mengatur transfer data' },
+      { title: 'Interrupt', body: 'I/O dapat mengirim sinyal interrupt ke CPU' }
+    ]
+  }
+};
+
+function showDetail(id) {
+  const d = compData[id];
+  const panel = document.getElementById('detail-panel');
+  document.getElementById('dp-icon').textContent = d.icon;
+  document.getElementById('dp-name').textContent = d.name;
+  document.getElementById('dp-name').style.color = d.color;
+  document.getElementById('dp-full').textContent = d.full;
+  document.getElementById('dp-desc').textContent = d.desc;
+  document.getElementById('dp-features').innerHTML = d.features.map(f =>
+    `<div class="feature-item"><h4 style="color:${d.color}">${f.title}</h4><p>${f.body}</p></div>`
+  ).join('');
+  panel.classList.add('visible');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ===== SIMULATION ENGINE =====
+const program = [
+  { addr: '0000', code: 'LOAD 0100', type: 'load', comment: 'ACC ← Mem[0100] (A=25)' },
+  { addr: '0001', code: 'ADD  0101', type: 'add',  comment: 'ACC ← ACC + Mem[0101] (B=10)' },
+  { addr: '0002', code: 'MUL  0102', type: 'mul',  comment: 'ACC ← ACC × Mem[0102] (C=4)' },
+  { addr: '0003', code: 'STORE 0103',type: 'store',comment: 'Mem[0103] ← ACC (hasil)' },
+  { addr: '0004', code: 'OUT  0103', type: 'out',  comment: 'Output ← Mem[0103]' },
+  { addr: '0005', code: 'HALT',      type: 'halt', comment: 'Program selesai' },
+];
+
+let memory = {
+  '0100': 25, '0101': 10, '0102': 4, '0103': 0
+};
+let memHighlight = {};
+let simState = {
+  pc: 0, ir: null, mar: null, mdr: null, acc: 0,
+  currentInst: -1, phase: null, step: 0, running: false, done: false
+};
+
+// Steps for each instruction
+function buildSteps() {
+  const steps = [];
+  program.forEach((inst, idx) => {
+    // FETCH
+    steps.push({ inst: idx, phase: 'fetch', label: 'FETCH', msg: `PC=${inst.addr} → MAR, baca Memori → MDR → IR`, action: () => {
+      simState.pc = idx + 1;
+      simState.mar = inst.addr;
+      simState.mdr = inst.code;
+      simState.ir = inst.code;
+      highlightPhase('fetch');
+      setActive('state-ir', 'highlight-reg'); setActive('state-mar', 'highlight-mem'); setActive('state-mdr', 'highlight-mem'); setActive('state-pc', 'highlight-reg');
+      memHighlight = {};
+    }});
+    // DECODE
+    steps.push({ inst: idx, phase: 'decode', label: 'DECODE', msg: `CU decode "${inst.code}" → ${inst.comment}`, action: () => {
+      highlightPhase('decode');
+      clearActive(); setActive('state-ir', 'highlight-cu');
+      memHighlight = {};
+    }});
+    // EXECUTE + STORE
+    if (inst.type === 'load') {
+      steps.push({ inst: idx, phase: 'execute', label: 'EXECUTE', msg: `Baca Mem[${inst.code.split(' ')[1]}]=25 → ACC`, action: () => {
+        simState.acc = memory['0100'];
+        simState.alu = 'LOAD';
+        highlightPhase('execute'); clearActive(); setActive('state-acc', 'highlight-reg'); setActive('state-alu', 'highlight-alu');
+        memHighlight = { '0100': 'access' };
+        updateMem();
+      }});
+    } else if (inst.type === 'add') {
+      steps.push({ inst: idx, phase: 'execute', label: 'EXECUTE', msg: `ALU: ${simState.acc} + Mem[0101](10) = ${simState.acc + 10}`, action: () => {
+        simState.acc = simState.acc + memory['0101'];
+        simState.alu = `ADD → ${simState.acc}`;
+        highlightPhase('execute'); clearActive(); setActive('state-acc', 'highlight-alu'); setActive('state-alu', 'highlight-alu');
+        memHighlight = { '0101': 'access' };
+        updateMem();
+      }});
+    } else if (inst.type === 'mul') {
+      steps.push({ inst: idx, phase: 'execute', label: 'EXECUTE', msg: `ALU: ${simState.acc} × Mem[0102](4) = ${simState.acc * 4}`, action: () => {
+        simState.acc = simState.acc * memory['0102'];
+        simState.alu = `MUL → ${simState.acc}`;
+        highlightPhase('execute'); clearActive(); setActive('state-acc', 'highlight-alu'); setActive('state-alu', 'highlight-alu');
+        memHighlight = { '0102': 'access' };
+        updateMem();
+      }});
+    } else if (inst.type === 'store') {
+      steps.push({ inst: idx, phase: 'store', label: 'STORE', msg: `Tulis ACC(${simState.acc || '?'}) → Mem[0103]`, action: () => {
+        memory['0103'] = simState.acc;
+        highlightPhase('store'); clearActive(); setActive('state-mdr', 'highlight-mem');
+        memHighlight = { '0103': 'write' };
+        updateMem();
+      }});
+    } else if (inst.type === 'out') {
+      steps.push({ inst: idx, phase: 'execute', label: 'OUTPUT', msg: `Output Mem[0103]=${memory['0103'] || simState.acc} → I/O Device`, action: () => {
+        const val = memory['0103'];
+        document.getElementById('output-display').textContent = `> Hasil (25 + 10) × 4 = ${val}`;
+        highlightPhase('execute'); clearActive(); setActive('state-acc', 'highlight-mem');
+        memHighlight = { '0103': 'access' };
+        updateMem();
+      }});
+    } else if (inst.type === 'halt') {
+      steps.push({ inst: idx, phase: 'halt', label: 'HALT', msg: `Program selesai. CPU berhenti.`, action: () => {
+        highlightPhase(null); clearActive();
+        simState.done = true;
+        document.getElementById('btn-step').disabled = true;
+        document.getElementById('btn-auto').disabled = true;
+        memHighlight = {};
+        updateMem();
+      }});
+    }
+  });
+  return steps;
+}
+
+let steps = [];
+let stepIdx = 0;
+let autoInterval = null;
+
+function highlightPhase(p) {
+  ['fetch','decode','execute','store'].forEach(x => {
+    document.getElementById('phase-' + x).classList.remove('active-phase');
+  });
+  if (p && p !== 'halt' && p !== 'output' && document.getElementById('phase-' + p)) {
+    document.getElementById('phase-' + p).classList.add('active-phase');
+  }
+}
+
+function clearActive() {
+  document.querySelectorAll('.state-box').forEach(b => {
+    b.classList.remove('active-state','highlight-alu','highlight-cu','highlight-reg','highlight-mem');
+  });
+}
+function setActive(id, cls) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add(cls);
+}
+
+function updateUI() {
+  document.getElementById('val-pc').textContent = String(simState.pc).padStart(4, '0');
+  document.getElementById('val-ir').textContent = simState.ir || '—';
+  document.getElementById('val-mar').textContent = simState.mar || '—';
+  document.getElementById('val-mdr').textContent = simState.mdr || '—';
+  document.getElementById('val-acc').textContent = simState.acc;
+  document.getElementById('val-alu').textContent = simState.alu || '—';
+  document.getElementById('cycle-counter').textContent = `Siklus: ${stepIdx}`;
+  renderProgram();
+}
+
+function renderProgram() {
+  const container = document.getElementById('prog-view');
+  const currentStep = steps[stepIdx - 1];
+  container.innerHTML = program.map((inst, i) => {
+    const isCurrent = currentStep && currentStep.inst === i;
+    const isDone = currentStep && i < currentStep.inst || (currentStep && currentStep.label === 'HALT' && i <= currentStep.inst);
+    const badges = { load: 'load', add: 'add', sub: 'sub', mul: 'mul', store: 'store', out: 'out', halt: 'halt' };
+    return `<div class="inst-row ${isCurrent ? 'current-inst' : ''} ${isDone && !isCurrent ? 'done-inst' : ''}">
+      <span class="inst-addr">${inst.addr}</span>
+      <span class="inst-code">${inst.code}</span>
+      <span class="inst-badge inst-badge-${badges[inst.type]}">${inst.type.toUpperCase()}</span>
+    </div>`;
+  }).join('');
+}
+
+function updateMem() {
+  const container = document.getElementById('mem-view');
+  container.innerHTML = Object.entries(memory).map(([addr, val]) => {
+    const cls = memHighlight[addr] === 'access' ? 'mem-access' : memHighlight[addr] === 'write' ? 'mem-write' : '';
+    return `<div class="mem-cell ${cls}">
+      <div class="mem-addr">${addr}</div>
+      <div class="mem-val">${val}</div>
+    </div>`;
+  }).join('');
+}
+
+function addLog(step) {
+  const container = document.getElementById('log-entries');
+  if (stepIdx === 1) container.innerHTML = '';
+  const phaseClass = { 'FETCH': 'phase-fetch', 'DECODE': 'phase-decode', 'EXECUTE': 'phase-execute', 'STORE': 'phase-store', 'OUTPUT': 'phase-output', 'HALT': 'phase-halt' };
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = `<span class="log-step">Step ${stepIdx}</span><span class="log-phase ${phaseClass[step.label] || ''}">${step.label}</span><span class="log-msg">${step.msg}</span>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function stepExecution() {
+  if (simState.done || stepIdx >= steps.length) return;
+  const step = steps[stepIdx];
+  step.action();
+  addLog(step);
+  stepIdx++;
+  simState.step = stepIdx;
+  updateUI();
+}
+
+let autoRunning = false;
+function autoRun() {
+  if (autoRunning) {
+    clearInterval(autoInterval);
+    autoRunning = false;
+    document.getElementById('btn-auto').textContent = '⏩ Auto';
+    return;
+  }
+  autoRunning = true;
+  document.getElementById('btn-auto').textContent = '⏸ Stop';
+  autoInterval = setInterval(() => {
+    if (simState.done || stepIdx >= steps.length) {
+      clearInterval(autoInterval);
+      autoRunning = false;
+      document.getElementById('btn-auto').textContent = '⏩ Auto';
+      return;
+    }
+    stepExecution();
+  }, 900);
+}
+
+function resetSim() {
+  clearInterval(autoInterval);
+  autoRunning = false;
+  memory = { '0100': 25, '0101': 10, '0102': 4, '0103': 0 };
+  memHighlight = {};
+  simState = { pc: 0, ir: null, mar: null, mdr: null, acc: 0, alu: null, currentInst: -1, phase: null, step: 0, running: false, done: false };
+  steps = buildSteps();
+  stepIdx = 0;
+  highlightPhase(null);
+  clearActive();
+  document.getElementById('btn-step').disabled = false;
+  document.getElementById('btn-auto').disabled = false;
+  document.getElementById('btn-auto').textContent = '⏩ Auto';
+  document.getElementById('output-display').textContent = '// Menunggu output...';
+  document.getElementById('log-entries').innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--text-muted); font-family: 'Space Mono', monospace; font-size: 0.7rem;">Tekan ▶ Step atau ⏩ Auto untuk memulai simulasi</div>`;
+  updateUI();
+  updateMem();
+}
+
+// ===== QUIZ =====
+const quizData = [
+  {
+    q: "Apa inovasi utama dari Arsitektur Von Neumann yang membedakannya dari komputer sebelumnya?",
+    opts: ["CPU yang lebih cepat", "Stored-Program Concept (instruksi dan data dalam memori yang sama)", "Penggunaan transistor", "Sistem operasi multitasking"],
+    ans: 1,
+    exp: "Inovasi utama Von Neumann adalah 'Stored-Program Concept' — instruksi program disimpan dalam memori yang sama dengan data, bukan dihardwired secara fisik. Ini memungkinkan komputer menjadi general-purpose."
+  },
+  {
+    q: "Register manakah yang menyimpan alamat instruksi BERIKUTNYA yang akan dieksekusi?",
+    opts: ["Instruction Register (IR)", "Memory Address Register (MAR)", "Program Counter (PC)", "Accumulator (ACC)"],
+    ans: 2,
+    exp: "Program Counter (PC) selalu menunjuk ke alamat instruksi berikutnya yang akan diambil (fetch). Setelah fetch, PC otomatis diinkrementasi agar menunjuk ke instruksi selanjutnya."
+  },
+  {
+    q: "Pada fase manakah dalam siklus mesin, instruksi yang ada di IR dianalisis oleh Control Unit?",
+    opts: ["Fetch", "Decode", "Execute", "Store"],
+    ans: 1,
+    exp: "Fase Decode terjadi setelah Fetch. Pada fase ini, Control Unit menganalisis instruksi yang ada di Instruction Register (IR), memecahnya menjadi opcode dan operand, lalu menyiapkan sinyal kontrol."
+  },
+  {
+    q: "Komponen CPU mana yang melakukan operasi 25 + 10?",
+    opts: ["Control Unit (CU)", "Program Counter (PC)", "ALU (Arithmetic Logic Unit)", "Memory Data Register (MDR)"],
+    ans: 2,
+    exp: "ALU (Arithmetic Logic Unit) adalah komponen yang melakukan SEMUA operasi aritmetika (penjumlahan, pengurangan, perkalian, dll.) dan operasi logika (AND, OR, NOT, dll.). Tidak ada kalkulasi yang terjadi di luar ALU."
+  },
+  {
+    q: "Apa yang dimaksud dengan 'Von Neumann Bottleneck'?",
+    opts: ["CPU yang terlalu lambat", "Keterbatasan bandwidth antara CPU dan memori karena berbagi bus yang sama", "Kapasitas register yang terbatas", "Kecepatan I/O yang lambat"],
+    ans: 1,
+    exp: "Von Neumann Bottleneck adalah keterbatasan performa yang terjadi karena CPU dan memori berbagi satu bus untuk transfer instruksi DAN data. Ini menciptakan kemacetan karena CPU sering menunggu data dari memori."
+  },
+  {
+    q: "Urutan fase yang BENAR dalam siklus mesin (machine cycle) adalah...",
+    opts: ["Decode → Fetch → Execute → Store", "Fetch → Decode → Execute → Store", "Execute → Fetch → Decode → Store", "Fetch → Execute → Decode → Store"],
+    ans: 1,
+    exp: "Urutan yang benar adalah Fetch → Decode → Execute → Store (FDE cycle). Pertama ambil instruksi (Fetch), lalu terjemahkan (Decode), eksekusi (Execute), dan simpan hasil (Store). Siklus ini berulang terus-menerus."
+  }
+];
+
+let quizAnswered = [];
+let quizScore = 0;
+
+function renderQuiz() {
+  const container = document.getElementById('quiz-container');
+  container.innerHTML = quizData.map((q, qi) => `
+    <div class="quiz-card" id="quiz-${qi}">
+      <div class="quiz-question">${qi + 1}. ${q.q}</div>
+      <div class="quiz-options">
+        ${q.opts.map((opt, oi) => `
+          <div class="quiz-opt" onclick="answerQuiz(${qi}, ${oi})" id="opt-${qi}-${oi}">
+            <div class="quiz-opt-letter">${String.fromCharCode(65 + oi)}</div>
+            <span>${opt}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="quiz-feedback" id="feedback-${qi}"></div>
+    </div>
+  `).join('');
+}
+
+function answerQuiz(qi, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const correct = quizData[qi].ans === oi;
+  if (correct) quizScore++;
+  const fb = document.getElementById(`feedback-${qi}`);
+  fb.classList.add('show', correct ? 'correct' : 'wrong');
+  fb.textContent = (correct ? '✅ Benar! ' : '❌ Salah. ') + quizData[qi].exp;
+  document.getElementById(`opt-${qi}-${oi}`).classList.add(correct ? 'correct' : 'wrong');
+  if (!correct) document.getElementById(`opt-${qi}-${quizData[qi].ans}`).classList.add('correct');
+  document.querySelectorAll(`#quiz-${qi} .quiz-opt`).forEach(o => o.style.pointerEvents = 'none');
+  if (quizAnswered.filter(a => a !== undefined).length === quizData.length) {
+    document.getElementById('quiz-score').innerHTML = `🏆 Skor Akhir: <strong>${quizScore}/${quizData.length}</strong> — ${quizScore === quizData.length ? 'Sempurna! Kamu menguasai materi ini.' : quizScore >= 4 ? 'Bagus! Pemahaman kamu sudah baik.' : 'Coba review materi lagi ya!'}`;
+  }
+}
+
+// ===== INIT =====
+steps = buildSteps();
+renderProgram();
+updateMem();
+updateUI();
+renderQuiz();
+</script>
+</body>
+</html>
