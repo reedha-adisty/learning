@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desain Jaringan SMK — Network Architecture</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --card: #1a2236;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --accent4: #a855f7;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --gedA: #0ea5e9;
+    --gedB: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,14,26,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner { max-width: 1280px; margin: auto; display: flex; align-items: center; gap: 8px; padding: 14px 24px; flex-wrap: wrap; }
+  .nav-badge {
+    background: var(--accent); color: #000; font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 2px; letter-spacing: 2px;
+  }
+  .nav-title { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; color: #fff; }
+  .nav-tabs { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+  .tab-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; padding: 6px 14px; border-radius: 4px;
+    cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px;
+  }
+  .tab-btn:hover, .tab-btn.active {
+    background: var(--accent); border-color: var(--accent);
+    color: #000; font-weight: 700;
+  }
+  /* SECTIONS */
+  .section { display: none; }
+  .section.active { display: block; }
+  .container { max-width: 1280px; margin: auto; padding: 40px 24px; }
+
+  /* =========== TOPOLOGY SVG =========== */
+  .topo-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    overflow-x: auto;
+  }
+  svg text { font-family: 'JetBrains Mono', monospace; }
+
+  /* Pulse animation */
+  @keyframes pulse-ring {
+    0% { opacity: 0.8; r: 6; }
+    100% { opacity: 0; r: 18; }
+  }
+  .pulse { animation: pulse-ring 1.6s infinite ease-out; }
+  @keyframes dash { to { stroke-dashoffset: -20; } }
+  .animated-line { stroke-dasharray: 6 4; animation: dash 1s linear infinite; }
+
+  /* =========== CARDS =========== */
+  .info-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+  .section-title {
+    font-size: 28px; font-weight: 800; letter-spacing: -1px;
+    margin-bottom: 6px;
+  }
+  .section-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--accent); margin-bottom: 32px;
+    letter-spacing: 2px; text-transform: uppercase;
+  }
+  .vlan-row {
+    display: grid; grid-template-columns: 80px 160px 1fr 1fr;
+    gap: 12px; align-items: center;
+    padding: 14px 20px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+    transition: border-color 0.2s;
+  }
+  .vlan-row:hover { border-color: var(--accent); }
+  .vlan-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; font-weight: 700;
+    padding: 4px 10px; border-radius: 4px; text-align: center;
+  }
+  .vlan-name { font-weight: 700; font-size: 15px; }
+  .vlan-range {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--accent3);
+  }
+  .vlan-desc { font-size: 13px; color: var(--muted); }
+  .rule-item {
+    display: flex; gap: 16px; align-items: flex-start;
+    padding: 14px 20px; border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+    margin-bottom: 8px;
+  }
+  .rule-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .rule-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .rule-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .tag {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; padding: 2px 8px; border-radius: 3px;
+    font-weight: 700; letter-spacing: 1px; margin-right: 4px; margin-bottom: 4px;
+  }
+  .tag-allow { background: rgba(57,255,20,0.15); color: var(--accent3); border: 1px solid rgba(57,255,20,0.3); }
+  .tag-deny { background: rgba(255,107,53,0.15); color: var(--accent2); border: 1px solid rgba(255,107,53,0.3); }
+  .tag-limit { background: rgba(168,85,247,0.15); color: var(--accent4); border: 1px solid rgba(168,85,247,0.3); }
+  .tag-vlan { background: rgba(0,212,255,0.12); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+
+  /* Route table */
+  .rtable { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .rtable th { background: rgba(0,212,255,0.1); color: var(--accent); padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--border); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  .rtable td { padding: 10px 16px; border-bottom: 1px solid rgba(30,58,95,0.5); color: var(--text); }
+  .rtable tr:hover td { background: rgba(0,212,255,0.03); }
+
+  /* Security */
+  .sec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .sec-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .sec-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .sec-icon { font-size: 28px; margin-bottom: 12px; }
+  .sec-title { font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+  .sec-body { font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .sec-tags { margin-top: 12px; }
+  .divider { height: 1px; background: var(--border); margin: 32px 0; }
+  .acl-block {
+    background: #050a12; border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    line-height: 1.8; overflow-x: auto; margin-top: 12px;
+  }
+  .acl-comment { color: var(--muted); }
+  .acl-permit { color: var(--accent3); }
+  .acl-deny { color: var(--accent2); }
+  .acl-kw { color: var(--accent); }
+  .acl-net { color: var(--accent4); }
+  .hero-band {
+    background: linear-gradient(135deg, rgba(0,212,255,0.08) 0%, rgba(168,85,247,0.08) 100%);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 12px; padding: 28px 32px; margin-bottom: 32px;
+  }
+  .problem-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 8px; margin-top: 12px; }
+  .problem-list li {
+    background: rgba(255,107,53,0.08); border: 1px solid rgba(255,107,53,0.25);
+    border-radius: 6px; padding: 8px 14px; font-size: 13px; color: #fca5a5;
+    display: flex; align-items: center; gap: 8px;
+  }
+  @media (max-width: 640px) {
+    .vlan-row { grid-template-columns: 1fr 1fr; }
+    .nav-title { font-size: 15px; }
+  }
+</style>
+</head>
+<body class="grid-bg">
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <span class="nav-badge">SMK</span>
+    <span class="nav-title">Network Design</span>
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="show('topo',this)">01 Topologi</button>
+      <button class="tab-btn" onclick="show('segmen',this)">02 Segmentasi</button>
+      <button class="tab-btn" onclick="show('routing',this)">03 Routing</button>
+      <button class="tab-btn" onclick="show('akses',this)">04 Hak Akses</button>
+      <button class="tab-btn" onclick="show('keamanan',this)">05 Keamanan</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ==================== 01 TOPOLOGI ==================== -->
+<div id="topo" class="section active">
+<div class="container">
+  <div class="hero-band">
+    <div class="mono" style="color:var(--accent);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Latar Belakang Masalah</div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:12px;">Jaringan SMK — Sebelum & Sesudah Redesign</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Seluruh perangkat berada dalam <strong style="color:#fff">1 broadcast domain</strong> menyebabkan masalah berikut:</div>
+    <ul class="problem-list">
+      <li>⚡ Broadcast berlebihan</li>
+      <li>🐌 Internet lambat saat praktikum</li>
+      <li>🖨️ Siswa akses printer guru</li>
+      <li>📂 Tamu lihat shared folder internal</li>
+      <li>🔎 Admin sulit monitoring</li>
+    </ul>
+  </div>
+
+  <p class="section-sub">// Topologi Jaringan Baru</p>
+  <h2 class="section-title" style="margin-top:-8px;margin-bottom:24px;">Topology Map — 2 Gedung</h2>
+
+  <div class="topo-wrap">
+    <svg viewBox="0 0 960 640" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:960px;display:block;margin:auto;">
+      <defs>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow2">
+          <feGaussianBlur stdDeviation="6" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#00d4ff" opacity="0.7"/>
+        </marker>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#f59e0b" opacity="0.7"/>
+        </marker>
+      </defs>
+
+      <!-- Background zones -->
+      <rect x="20" y="20" width="430" height="600" rx="14" fill="rgba(14,165,233,0.04)" stroke="#0ea5e9" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <rect x="510" y="20" width="430" height="600" rx="14" fill="rgba(245,158,11,0.04)" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+      <!-- Zone Labels -->
+      <text x="36" y="50" fill="#0ea5e9" font-size="13" font-weight="700" letter-spacing="2">GEDUNG A</text>
+      <text x="526" y="50" fill="#f59e0b" font-size="13" font-weight="700" letter-spacing="2">GEDUNG B</text>
+
+      <!-- === INTERNET CLOUD === -->
+      <ellipse cx="480" cy="42" rx="52" ry="22" fill="rgba(100,116,139,0.2)" stroke="#475569" stroke-width="1.5"/>
+      <text x="480" y="46" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="700">INTERNET</text>
+
+      <!-- ISP to Firewall line -->
+      <line x1="480" y1="64" x2="480" y2="98" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+      <!-- === FIREWALL / UTM === -->
+      <rect x="418" y="98" width="124" height="44" rx="8" fill="rgba(239,68,68,0.15)" stroke="#ef4444" stroke-width="2" filter="url(#glow)"/>
+      <text x="480" y="116" text-anchor="middle" fill="#ef4444" font-size="11" font-weight="700">🛡 FIREWALL / UTM</text>
+      <text x="480" y="131" text-anchor="middle" fill="#fca5a5" font-size="9">Palo Alto / pfSense</text>
+
+      <!-- Firewall to Core Switch -->
+      <line x1="480" y1="142" x2="480" y2="178" stroke="#00d4ff" stroke-width="2" marker-end="url(#arr)"/>
+
+      <!-- === CORE SWITCH / ROUTER === -->
+      <rect x="406" y="178" width="148" height="44" rx="8" fill="rgba(0,212,255,0.1)" stroke="#00d4ff" stroke-width="2" filter="url(#glow)"/>
+      <text x="480" y="196" text-anchor="middle" fill="#00d4ff" font-size="11" font-weight="700">⚙ CORE SWITCH / ROUTER</text>
+      <text x="480" y="211" text-anchor="middle" fill="#7dd3fc" font-size="9">Inter-VLAN Routing</text>
+
+      <!-- Core to Gedung A Switch -->
+      <line x1="430" y1="222" x2="250" y2="290" stroke="#0ea5e9" stroke-width="2" class="animated-line" stroke-dasharray="6 4"/>
+      <!-- Core to Gedung B Switch -->
+      <line x1="530" y1="222" x2="710" y2="290" stroke="#f59e0b" stroke-width="2" class="animated-line" stroke-dasharray="6 4"/>
+
+      <!-- === SWITCH GEDUNG A === -->
+      <rect x="170" y="290" width="160" height="40" rx="7" fill="rgba(14,165,233,0.12)" stroke="#0ea5e9" stroke-width="1.8"/>
+      <text x="250" y="308" text-anchor="middle" fill="#0ea5e9" font-size="11" font-weight="700">⚡ SWITCH GEDUNG A</text>
+      <text x="250" y="322" text-anchor="middle" fill="#7dd3fc" font-size="9">Managed L2</text>
+
+      <!-- === SWITCH GEDUNG B === -->
+      <rect x="630" y="290" width="160" height="40" rx="7" fill="rgba(245,158,11,0.12)" stroke="#f59e0b" stroke-width="1.8"/>
+      <text x="710" y="308" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="700">⚡ SWITCH GEDUNG B</text>
+      <text x="710" y="322" text-anchor="middle" fill="#fcd34d" font-size="9">Managed L2</text>
+
+      <!-- === NODES GEDUNG A === -->
+      <!-- Lab Komputer 1 -->
+      <line x1="250" y1="330" x2="80" y2="390" stroke="#0ea5e9" stroke-width="1.2" opacity="0.5"/>
+      <rect x="30" y="390" width="100" height="52" rx="6" fill="rgba(14,165,233,0.08)" stroke="#0ea5e9" stroke-width="1.2"/>
+      <text x="80" y="408" text-anchor="middle" fill="#bae6fd" font-size="9.5" font-weight="700">🖥 Lab Komputer 1</text>
+      <text x="80" y="422" text-anchor="middle" fill="#0ea5e9" font-size="8.5">VLAN 10</text>
+      <text x="80" y="434" text-anchor="middle" fill="#64748b" font-size="8">192.168.10.0/24</text>
+
+      <!-- Lab Komputer 2 -->
+      <line x1="250" y1="330" x2="175" y2="390" stroke="#0ea5e9" stroke-width="1.2" opacity="0.5"/>
+      <rect x="125" y="390" width="100" height="52" rx="6" fill="rgba(14,165,233,0.08)" stroke="#0ea5e9" stroke-width="1.2"/>
+      <text x="175" y="408" text-anchor="middle" fill="#bae6fd" font-size="9.5" font-weight="700">🖥 Lab Komputer 2</text>
+      <text x="175" y="422" text-anchor="middle" fill="#0ea5e9" font-size="8.5">VLAN 20</text>
+      <text x="175" y="434" text-anchor="middle" fill="#64748b" font-size="8">192.168.20.0/24</text>
+
+      <!-- Ruang Guru -->
+      <line x1="250" y1="330" x2="270" y2="390" stroke="#39ff14" stroke-width="1.2" opacity="0.5"/>
+      <rect x="220" y="390" width="100" height="52" rx="6" fill="rgba(57,255,20,0.06)" stroke="#39ff14" stroke-width="1.2"/>
+      <text x="270" y="408" text-anchor="middle" fill="#bbf7d0" font-size="9.5" font-weight="700">👨‍🏫 Ruang Guru</text>
+      <text x="270" y="422" text-anchor="middle" fill="#39ff14" font-size="8.5">VLAN 30</text>
+      <text x="270" y="434" text-anchor="middle" fill="#64748b" font-size="8">192.168.30.0/24</text>
+
+      <!-- Ruang Kepala Sekolah -->
+      <line x1="250" y1="330" x2="370" y2="390" stroke="#a855f7" stroke-width="1.2" opacity="0.5"/>
+      <rect x="318" y="390" width="104" height="52" rx="6" fill="rgba(168,85,247,0.08)" stroke="#a855f7" stroke-width="1.2"/>
+      <text x="370" y="405" text-anchor="middle" fill="#e9d5ff" font-size="9.5" font-weight="700">👔 Ruang Kepala</text>
+      <text x="370" y="418" text-anchor="middle" fill="#e9d5ff" font-size="9.5" font-weight="700">Sekolah</text>
+      <text x="370" y="431" text-anchor="middle" fill="#a855f7" font-size="8.5">VLAN 40</text>
+      <text x="370" y="443" text-anchor="middle" fill="#64748b" font-size="8">192.168.40.0/24</text>
+
+      <!-- === NODES GEDUNG B === -->
+      <!-- Ruang Kelas -->
+      <line x1="710" y1="330" x2="580" y2="390" stroke="#0ea5e9" stroke-width="1.2" opacity="0.5"/>
+      <rect x="530" y="390" width="100" height="52" rx="6" fill="rgba(14,165,233,0.08)" stroke="#0ea5e9" stroke-width="1.2"/>
+      <text x="580" y="408" text-anchor="middle" fill="#bae6fd" font-size="9.5" font-weight="700">🏫 Ruang Kelas</text>
+      <text x="580" y="422" text-anchor="middle" fill="#0ea5e9" font-size="8.5">VLAN 10/20</text>
+      <text x="580" y="434" text-anchor="middle" fill="#64748b" font-size="8">Siswa/Lab</text>
+
+      <!-- Ruang TU -->
+      <line x1="710" y1="330" x2="670" y2="390" stroke="#39ff14" stroke-width="1.2" opacity="0.5"/>
+      <rect x="620" y="390" width="100" height="52" rx="6" fill="rgba(57,255,20,0.06)" stroke="#39ff14" stroke-width="1.2"/>
+      <text x="670" y="408" text-anchor="middle" fill="#bbf7d0" font-size="9.5" font-weight="700">📋 Ruang TU</text>
+      <text x="670" y="422" text-anchor="middle" fill="#39ff14" font-size="8.5">VLAN 50</text>
+      <text x="670" y="434" text-anchor="middle" fill="#64748b" font-size="8">192.168.50.0/24</text>
+
+      <!-- Ruang Tamu -->
+      <line x1="710" y1="330" x2="760" y2="390" stroke="#94a3b8" stroke-width="1.2" opacity="0.5"/>
+      <rect x="710" y="390" width="100" height="52" rx="6" fill="rgba(148,163,184,0.06)" stroke="#64748b" stroke-width="1.2"/>
+      <text x="760" y="408" text-anchor="middle" fill="#cbd5e1" font-size="9.5" font-weight="700">🪑 Ruang Tamu</text>
+      <text x="760" y="422" text-anchor="middle" fill="#94a3b8" font-size="8.5">VLAN 60</text>
+      <text x="760" y="434" text-anchor="middle" fill="#64748b" font-size="8">192.168.60.0/24</text>
+
+      <!-- Server Sekolah -->
+      <line x1="710" y1="330" x2="860" y2="390" stroke="#ef4444" stroke-width="1.5" opacity="0.7"/>
+      <rect x="808" y="390" width="104" height="52" rx="6" fill="rgba(239,68,68,0.1)" stroke="#ef4444" stroke-width="1.5" filter="url(#glow)"/>
+      <text x="860" y="408" text-anchor="middle" fill="#fca5a5" font-size="9.5" font-weight="700">🖧 Server Sekolah</text>
+      <text x="860" y="422" text-anchor="middle" fill="#ef4444" font-size="8.5">VLAN 99</text>
+      <text x="860" y="434" text-anchor="middle" fill="#64748b" font-size="8">192.168.99.0/24</text>
+
+      <!-- === ACCESS POINTS === -->
+      <!-- AP Gedung A -->
+      <line x1="250" y1="330" x2="130" y2="490" stroke="#0ea5e9" stroke-width="1" opacity="0.3" stroke-dasharray="3 3"/>
+      <ellipse cx="130" cy="505" rx="38" ry="18" fill="rgba(14,165,233,0.06)" stroke="#0ea5e9" stroke-width="1" stroke-dasharray="3 2"/>
+      <text x="130" y="503" text-anchor="middle" fill="#7dd3fc" font-size="9" font-weight="700">📡 AP A</text>
+      <text x="130" y="514" text-anchor="middle" fill="#64748b" font-size="8">WiFi Guru</text>
+
+      <!-- AP Gedung B -->
+      <line x1="710" y1="330" x2="840" y2="490" stroke="#f59e0b" stroke-width="1" opacity="0.3" stroke-dasharray="3 3"/>
+      <ellipse cx="840" cy="505" rx="38" ry="18" fill="rgba(245,158,11,0.06)" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3 2"/>
+      <text x="840" y="503" text-anchor="middle" fill="#fcd34d" font-size="9" font-weight="700">📡 AP B</text>
+      <text x="840" y="514" text-anchor="middle" fill="#64748b" font-size="8">WiFi Tamu</text>
+
+      <!-- === LEGEND === -->
+      <rect x="30" y="530" width="900" height="80" rx="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+      <text x="50" y="550" fill="#64748b" font-size="10" font-weight="700" letter-spacing="1">KETERANGAN</text>
+      <!-- items -->
+      <rect x="50" y="558" width="10" height="10" rx="2" fill="rgba(14,165,233,0.5)" stroke="#0ea5e9"/>
+      <text x="66" y="567" fill="#94a3b8" font-size="9.5">VLAN Siswa (10,20)</text>
+      <rect x="190" y="558" width="10" height="10" rx="2" fill="rgba(57,255,20,0.5)" stroke="#39ff14"/>
+      <text x="206" y="567" fill="#94a3b8" font-size="9.5">VLAN Guru/TU (30,50)</text>
+      <rect x="340" y="558" width="10" height="10" rx="2" fill="rgba(168,85,247,0.5)" stroke="#a855f7"/>
+      <text x="356" y="567" fill="#94a3b8" font-size="9.5">VLAN Manajemen (40)</text>
+      <rect x="490" y="558" width="10" height="10" rx="2" fill="rgba(100,116,139,0.5)" stroke="#64748b"/>
+      <text x="506" y="567" fill="#94a3b8" font-size="9.5">VLAN Tamu (60)</text>
+      <rect x="620" y="558" width="10" height="10" rx="2" fill="rgba(239,68,68,0.5)" stroke="#ef4444"/>
+      <text x="636" y="567" fill="#94a3b8" font-size="9.5">VLAN Server (99)</text>
+
+      <line x1="50" y1="584" x2="90" y2="584" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text x="96" y="587" fill="#94a3b8" font-size="9.5">Link Inter-VLAN (Trunk)</text>
+      <line x1="270" y1="584" x2="310" y2="584" stroke="#0ea5e9" stroke-width="1.5"/>
+      <text x="316" y="587" fill="#94a3b8" font-size="9.5">Link Access Port</text>
+      <line x1="460" y1="584" x2="500" y2="584" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="506" y="587" fill="#94a3b8" font-size="9.5">Firewall / Security</text>
+    </svg>
+  </div>
+
+  <div style="margin-top:24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
+    <div class="info-card" style="border-color:rgba(14,165,233,0.4);">
+      <div class="mono" style="color:#0ea5e9;font-size:11px;margin-bottom:6px;">GEDUNG A</div>
+      <div style="font-weight:700;margin-bottom:8px;">4 Area Kerja</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8;">Lab Komputer 1 & 2<br>Ruang Guru<br>Ruang Kepala Sekolah</div>
+    </div>
+    <div class="info-card" style="border-color:rgba(245,158,11,0.4);">
+      <div class="mono" style="color:#f59e0b;font-size:11px;margin-bottom:6px;">GEDUNG B</div>
+      <div style="font-weight:700;margin-bottom:8px;">4 Area Kerja</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8;">Ruang Kelas<br>Ruang TU / Admin<br>Ruang Tamu + Server Sekolah</div>
+    </div>
+    <div class="info-card" style="border-color:rgba(239,68,68,0.4);">
+      <div class="mono" style="color:#ef4444;font-size:11px;margin-bottom:6px;">BACKBONE</div>
+      <div style="font-weight:700;margin-bottom:8px;">Core Infrastructure</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8;">Firewall / UTM<br>Core Switch + Router<br>Inter-VLAN Routing</div>
+    </div>
+    <div class="info-card" style="border-color:rgba(57,255,20,0.4);">
+      <div class="mono" style="color:#39ff14;font-size:11px;margin-bottom:6px;">SOLUSI</div>
+      <div style="font-weight:700;margin-bottom:8px;">Segmentasi VLAN</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8;">6 VLAN terpisah<br>ACL antar segmen<br>QoS & bandwidth control</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ==================== 02 SEGMENTASI ==================== -->
+<div id="segmen" class="section">
+<div class="container">
+  <p class="section-sub">// Network Segmentation</p>
+  <h2 class="section-title">Segmentasi Jaringan — VLAN Design</h2>
+
+  <div style="margin-bottom:24px;" class="info-card">
+    <div style="font-weight:700;margin-bottom:6px;">Konsep Segmentasi</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.7;">
+      Jaringan dibagi menjadi <strong style="color:#fff">6 VLAN</strong> berdasarkan peran pengguna dan area. Setiap VLAN memiliki subnet tersendiri, sehingga broadcast domain terisolasi. Traffic antar VLAN hanya diizinkan melalui router/firewall dengan kebijakan ACL yang ketat.
+    </div>
+  </div>
+
+  <!-- Header Row -->
+  <div style="display:grid;grid-template-columns:80px 160px 1fr 1fr;gap:12px;padding:8px 20px;margin-bottom:6px;">
+    <div class="mono" style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">VLAN ID</div>
+    <div class="mono" style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Nama</div>
+    <div class="mono" style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Subnet / Range</div>
+    <div class="mono" style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Deskripsi & Anggota</div>
+  </div>
+
+  <div class="vlan-row">
+    <span class="vlan-id" style="background:rgba(14,165,233,0.2);color:#0ea5e9;">10</span>
+    <span class="vlan-name">Lab Komp 1</span>
+    <span class="vlan-range">192.168.10.0/24<br>GW: .10.1 | Host: .10.2–.10.254</span>
+    <span class="vlan-desc">🖥 30–40 PC siswa praktikum. Internet terbatas waktu. Tidak bisa akses printer guru & shared folder internal.</span>
+  </div>
+  <div class="vlan-row">
+    <span class="vlan-id" style="background:rgba(14,165,233,0.2);color:#38bdf8;">20</span>
+    <span class="vlan-name">Lab Komp 2</span>
+    <span class="vlan-range">192.168.20.0/24<br>GW: .20.1 | Host: .20.2–.20.254</span>
+    <span class="vlan-desc">🖥 30–40 PC siswa praktikum. Konfigurasi identik VLAN 10. Terisolasi dari VLAN 10 (tidak saling ganggu).</span>
+  </div>
+  <div class="vlan-row">
+    <span class="vlan-id" style="background:rgba(57,255,20,0.15);color:#39ff14;">30</span>
+    <span class="vlan-name">Guru</span>
+    <span class="vlan-range">192.168.30.0/24<br>GW: .30.1 | Host: .30.2–.30.254</span>
+    <span class="vlan-desc">👨‍🏫 PC & laptop guru, printer guru, shared folder pedagogis. Dapat akses server sekolah dengan autentikasi.</span>
+  </div>
+  <div class="vlan-row">
+    <span class="vlan-id" style="background:rgba(168,85,247,0.15);color:#a855f7;">40</span>
+    <span class="vlan-name">Manajemen</span>
+    <span class="vlan-range">192.168.40.0/24<br>GW: .40.1 | Host: .40.2–.40.10</span>
+    <span class="vlan-desc">👔 Kepala Sekolah + Wakil. Akses penuh monitoring jaringan. Dapat melihat laporan semua VLAN.</span>
+  </div>
+  <div class="vlan-row">
+    <span class="vlan-id" style="background:rgba(57,255,20,0.15);color:#86efac;">50</span>
+    <span class="vlan-name">TU / Admin</span>
+    <span class="vlan-range">192.168.50.0/24<br>GW: .50.1 | Host: .50.2–.50.50</span>
+    <span class="vlan-desc">📋 Tata Usaha & administrasi. Akses ke server data siswa/keuangan. Printer TU eksklusif. Terisolasi dari siswa.</span>
+  </div>
+  <div class="vlan-row">
+    <span class="vlan-id" style="background:rgba(148,163,184,0.1);color:#94a3b8;">60</span>
+    <span class="vlan-name">Tamu</span>
+    <span class="vlan-range">192.168.60.0/24<br>GW: .60.1 | Host: DHCP auto</span>
+    <span class="vlan-desc">🪑 Tamu & perangkat tidak dikenal. Internet only melalui captive portal. TOTAL isolasi dari semua VLAN internal.</span>
+  </div>
+  <div class="vlan-row" style="border-color:rgba(239,68,68,0.4);">
+    <span class="vlan-id" style="background:rgba(239,68,68,0.15);color:#ef4444;">99</span>
+    <span class="vlan-name">Server</span>
+    <span class="vlan-range">192.168.99.0/24<br>GW: .99.1 | Host: .99.10–.99.50</span>
+    <span class="vlan-desc">🖧 Server sekolah (file, web, database, NTP, DNS internal). Akses terkontrol ketat. Hanya port spesifik diizinkan.</span>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-size:18px;font-weight:800;margin-bottom:20px;">Konfigurasi Switch — Managed L2</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="info-card">
+      <div style="font-weight:700;margin-bottom:12px;color:#0ea5e9;">Switch Gedung A</div>
+      <div class="acl-block">
+<span class="acl-comment">! Buat VLAN</span>
+vlan <span class="acl-kw">10</span>
+  name LAB_KOMPUTER_1
+vlan <span class="acl-kw">20</span>
+  name LAB_KOMPUTER_2
+vlan <span class="acl-kw">30</span>
+  name GURU
+vlan <span class="acl-kw">40</span>
+  name MANAJEMEN
+<span class="acl-comment">! Port ke Lab Komputer 1 (Fa0/1-20)</span>
+interface range Fa0/1-20
+  switchport mode access
+  switchport access vlan <span class="acl-kw">10</span>
+  spanning-tree portfast
+<span class="acl-comment">! Port ke Ruang Guru</span>
+interface Fa0/21
+  switchport mode access
+  switchport access vlan <span class="acl-kw">30</span>
+<span class="acl-comment">! Uplink ke Core (Trunk)</span>
+interface Gi0/1
+  switchport mode trunk
+  switchport trunk allowed vlan 10,20,30,40</div>
+    </div>
+    <div class="info-card">
+      <div style="font-weight:700;margin-bottom:12px;color:#f59e0b;">Switch Gedung B</div>
+      <div class="acl-block">
+<span class="acl-comment">! Buat VLAN</span>
+vlan <span class="acl-kw">10</span>
+  name RUANG_KELAS
+vlan <span class="acl-kw">50</span>
+  name TU_ADMIN
+vlan <span class="acl-kw">60</span>
+  name TAMU
+vlan <span class="acl-kw">99</span>
+  name SERVER
+<span class="acl-comment">! Port ke Ruang Kelas</span>
+interface range Fa0/1-10
+  switchport mode access
+  switchport access vlan <span class="acl-kw">10</span>
+<span class="acl-comment">! Port ke Server</span>
+interface Fa0/24
+  switchport mode access
+  switchport access vlan <span class="acl-kw">99</span>
+<span class="acl-comment">! Uplink ke Core (Trunk)</span>
+interface Gi0/1
+  switchport mode trunk
+  switchport trunk allowed vlan 10,50,60,99</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ==================== 03 ROUTING ==================== -->
+<div id="routing" class="section">
+<div class="container">
+  <p class="section-sub">// Inter-Building Routing</p>
+  <h2 class="section-title">Routing Antar Gedung</h2>
+
+  <div class="info-card" style="margin-bottom:24px;">
+    <div style="font-weight:700;margin-bottom:6px;">Arsitektur Routing</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.7;">
+      Core Switch berfungsi sebagai <strong style="color:#fff">Router-on-a-Stick</strong> dengan sub-interface untuk setiap VLAN (Inter-VLAN Routing). Koneksi antar gedung menggunakan <strong style="color:#fff">trunk link fiber/copper</strong> berkecepatan Gigabit. Semua traffic melewati Firewall sebelum ke internet.
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+    <div class="info-card">
+      <div style="font-weight:700;margin-bottom:12px;color:#00d4ff;">Core Router — Inter-VLAN</div>
+      <div class="acl-block">
+<span class="acl-comment">! Sub-interface per VLAN</span>
+interface Gi0/0.<span class="acl-kw">10</span>
+  encapsulation dot1Q <span class="acl-kw">10</span>
+  ip address <span class="acl-net">192.168.10.1</span> 255.255.255.0
+interface Gi0/0.<span class="acl-kw">20</span>
+  encapsulation dot1Q <span class="acl-kw">20</span>
+  ip address <span class="acl-net">192.168.20.1</span> 255.255.255.0
+interface Gi0/0.<span class="acl-kw">30</span>
+  encapsulation dot1Q <span class="acl-kw">30</span>
+  ip address <span class="acl-net">192.168.30.1</span> 255.255.255.0
+interface Gi0/0.<span class="acl-kw">40</span>
+  encapsulation dot1Q <span class="acl-kw">40</span>
+  ip address <span class="acl-net">192.168.40.1</span> 255.255.255.0
+interface Gi0/0.<span class="acl-kw">50</span>
+  encapsulation dot1Q <span class="acl-kw">50</span>
+  ip address <span class="acl-net">192.168.50.1</span> 255.255.255.0
+interface Gi0/0.<span class="acl-kw">60</span>
+  encapsulation dot1Q <span class="acl-kw">60</span>
+  ip address <span class="acl-net">192.168.60.1</span> 255.255.255.0
+interface Gi0/0.<span class="acl-kw">99</span>
+  encapsulation dot1Q <span class="acl-kw">99</span>
+  ip address <span class="acl-net">192.168.99.1</span> 255.255.255.0
+<span class="acl-comment">! Default route ke firewall</span>
+ip route 0.0.0.0 0.0.0.0 <span class="acl-net">10.0.0.1</span></div>
+    </div>
+    <div class="info-card">
+      <div style="font-weight:700;margin-bottom:12px;color:#39ff14;">DHCP Server per VLAN</div>
+      <div class="acl-block">
+<span class="acl-comment">! DHCP Pool Lab 1</span>
+ip dhcp pool <span class="acl-kw">VLAN10_LAB1</span>
+  network <span class="acl-net">192.168.10.0</span> 255.255.255.0
+  default-router <span class="acl-net">192.168.10.1</span>
+  dns-server <span class="acl-net">192.168.99.10</span> 8.8.8.8
+  lease 0 8 0
+ip dhcp excluded-address <span class="acl-net">192.168.10.1</span> <span class="acl-net">192.168.10.9</span>
+<span class="acl-comment">! DHCP Pool Guru</span>
+ip dhcp pool <span class="acl-kw">VLAN30_GURU</span>
+  network <span class="acl-net">192.168.30.0</span> 255.255.255.0
+  default-router <span class="acl-net">192.168.30.1</span>
+  dns-server <span class="acl-net">192.168.99.10</span> 8.8.8.8
+  lease 1 0 0
+ip dhcp excluded-address <span class="acl-net">192.168.30.1</span> <span class="acl-net">192.168.30.9</span>
+<span class="acl-comment">! DHCP Pool Tamu</span>
+ip dhcp pool <span class="acl-kw">VLAN60_TAMU</span>
+  network <span class="acl-net">192.168.60.0</span> 255.255.255.0
+  default-router <span class="acl-net">192.168.60.1</span>
+  dns-server 8.8.8.8 8.8.4.4
+  lease 0 4 0
+ip dhcp excluded-address <span class="acl-net">192.168.60.1</span> <span class="acl-net">192.168.60.9</span></div>
+    </div>
+  </div>
+
+  <!-- Routing Table -->
+  <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;">Tabel Routing — Traffic Flow</h3>
+  <div class="info-card" style="padding:0;overflow:hidden;">
+    <table class="rtable">
+      <thead>
+        <tr>
+          <th>Source VLAN</th>
+          <th>Destination</th>
+          <th>Next Hop</th>
+          <th>Policy</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>VLAN 10/20 (Siswa)</td><td>Internet</td><td>Firewall → ISP</td><td>Bandwidth limit 2Mbps/user; Filter konten</td><td><span class="tag tag-allow">ALLOW</span></td>
+        </tr>
+        <tr>
+          <td>VLAN 10/20 (Siswa)</td><td>VLAN 30 (Guru)</td><td>Core Router</td><td>Blokir penuh; ACL deny</td><td><span class="tag tag-deny">DENY</span></td>
+        </tr>
+        <tr>
+          <td>VLAN 10/20 (Siswa)</td><td>VLAN 99 (Server)</td><td>Core Router</td><td>Hanya port 80,443 (web server sekolah)</td><td><span class="tag tag-limit">LIMITED</span></td>
+        </tr>
+        <tr>
+          <td>VLAN 30 (Guru)</td><td>Internet</td><td>Firewall → ISP</td><td>Akses penuh; QoS prioritas tinggi</td><td><span class="tag tag-allow">ALLOW</span></td>
+        </tr>
+        <tr>
+          <td>VLAN 30 (Guru)</td><td>VLAN 99 (Server)</td><td>Core Router</td><td>Autentikasi; akses folder pedagogis</td><td><span class="tag tag-allow">ALLOW</span></td>
+        </tr>
+        <tr>
+          <td>VLAN 40 (Manajemen)</td><td>Semua VLAN</td><td>Core Router</td><td>Read-only monitoring; SSH ke perangkat</td><td><span class="tag tag-allow">ALLOW</span></td>
+        </tr>
+        <tr>
+          <td>VLAN 50 (TU)</td><td>VLAN 99 (Server)</td><td>Core Router</td><td>Akses database siswa & keuangan</td><td><span class="tag tag-allow">ALLOW</span></td>
+        </tr>
+        <tr>
+          <td>VLAN 60 (Tamu)</td><td>Internet</td><td>Firewall → ISP</td><td>Captive portal; 5Mbps shared; blokir 23:00–06:00</td><td><span class="tag tag-limit">LIMITED</span></td>
+        </tr>
+        <tr>
+          <td>VLAN 60 (Tamu)</td><td>Semua VLAN internal</td><td>—</td><td>Total isolasi; tidak ada routing</td><td><span class="tag tag-deny">DENY</span></td>
+        </tr>
+        <tr>
+          <td>VLAN 99 (Server)</td><td>Internet</td><td>Firewall</td><td>Akses keluar minimal; update terjadwal saja</td><td><span class="tag tag-limit">LIMITED</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+  <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;">QoS — Bandwidth Management</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">
+    <div class="rule-item">
+      <span class="rule-icon">🎓</span>
+      <div>
+        <div class="rule-title">Guru & Manajemen</div>
+        <div class="rule-body">Prioritas DSCP EF (Expedited Forwarding). Bandwidth guaranteed 10Mbps. Tidak terdampak saat praktikum berjalan.</div>
+      </div>
+    </div>
+    <div class="rule-item">
+      <span class="rule-icon">🖥</span>
+      <div>
+        <div class="rule-title">Siswa Lab (VLAN 10/20)</div>
+        <div class="rule-body">Bandwidth pool bersama 20Mbps per lab. Per-user limit 1Mbps. Jadwal akses sesuai jam praktikum.</div>
+      </div>
+    </div>
+    <div class="rule-item">
+      <span class="rule-icon">🪑</span>
+      <div>
+        <div class="rule-title">Tamu (VLAN 60)</div>
+        <div class="rule-body">Bandwidth shared 5Mbps seluruh VLAN tamu. Prioritas terendah. Captive portal dengan login.</div>
+      </div>
+    </div>
+    <div class="rule-item">
+      <span class="rule-icon">🖧</span>
+      <div>
+        <div class="rule-title">Server Internal</div>
+        <div class="rule-body">Traffic server diprioritaskan di jaringan lokal. Update/backup dijadwalkan malam hari saat traffic rendah.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ==================== 04 HAK AKSES ==================== -->
+<div id="akses" class="section">
+<div class="container">
+  <p class="section-sub">// Access Control Policy</p>
+  <h2 class="section-title">Pembagian Hak Akses Divisi</h2>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px;">
+
+    <div class="info-card" style="border-color:rgba(14,165,233,0.4);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <span style="font-size:28px;">🖥</span>
+        <div>
+          <div style="font-weight:800;font-size:16px;">Siswa</div>
+          <div class="mono" style="font-size:10px;color:#0ea5e9;">VLAN 10 / VLAN 20</div>
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="tag tag-allow">✓ Internet (filtered)</div>
+        <div class="tag tag-allow">✓ Web server sekolah</div>
+        <div class="tag tag-allow">✓ DNS internal</div>
+        <div class="tag tag-deny">✗ Printer guru</div>
+        <div class="tag tag-deny">✗ Shared folder guru</div>
+        <div class="tag tag-deny">✗ Server database</div>
+        <div class="tag tag-deny">✗ VLAN lain</div>
+        <div class="tag tag-limit">⚠ Bandwidth 1Mbps/user</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">Jam akses: 07:00–17:00 pada hari sekolah. Web filtering aktif (blokir sosmed saat jam pelajaran).</div>
+    </div>
+
+    <div class="info-card" style="border-color:rgba(57,255,20,0.4);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <span style="font-size:28px;">👨‍🏫</span>
+        <div>
+          <div style="font-weight:800;font-size:16px;">Guru</div>
+          <div class="mono" style="font-size:10px;color:#39ff14;">VLAN 30</div>
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="tag tag-allow">✓ Internet penuh</div>
+        <div class="tag tag-allow">✓ Printer guru (VLAN 30)</div>
+        <div class="tag tag-allow">✓ Shared folder pedagogis</div>
+        <div class="tag tag-allow">✓ Server sekolah (auth)</div>
+        <div class="tag tag-allow">✓ Upload materi e-learning</div>
+        <div class="tag tag-deny">✗ Database keuangan</div>
+        <div class="tag tag-deny">✗ Konfigurasi jaringan</div>
+        <div class="tag tag-limit">⚠ Akses server via LDAP</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">Autentikasi 802.1X atau username/password domain. Bandwidth prioritas tinggi.</div>
+    </div>
+
+    <div class="info-card" style="border-color:rgba(168,85,247,0.4);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <span style="font-size:28px;">👔</span>
+        <div>
+          <div style="font-weight:800;font-size:16px;">Kepala Sekolah</div>
+          <div class="mono" style="font-size:10px;color:#a855f7;">VLAN 40</div>
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="tag tag-allow">✓ Internet penuh</div>
+        <div class="tag tag-allow">✓ Semua server (read)</div>
+        <div class="tag tag-allow">✓ Laporan & monitoring</div>
+        <div class="tag tag-allow">✓ Dashboard jaringan</div>
+        <div class="tag tag-allow">✓ Approve akses khusus</div>
+        <div class="tag tag-limit">⚠ Tidak bisa ubah config</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">Akses read-only ke semua data. Laporan monitoring jaringan otomatis dikirim via email.</div>
+    </div>
+
+    <div class="info-card" style="border-color:rgba(57,255,20,0.3);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <span style="font-size:28px;">📋</span>
+        <div>
+          <div style="font-weight:800;font-size:16px;">TU / Admin</div>
+          <div class="mono" style="font-size:10px;color:#86efac;">VLAN 50</div>
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="tag tag-allow">✓ Internet penuh</div>
+        <div class="tag tag-allow">✓ Database siswa</div>
+        <div class="tag tag-allow">✓ Database keuangan</div>
+        <div class="tag tag-allow">✓ Printer TU</div>
+        <div class="tag tag-allow">✓ CCTV / presensi</div>
+        <div class="tag tag-deny">✗ Folder guru</div>
+        <div class="tag tag-deny">✗ Lab komputer</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">Akses terbatas pada sistem administrasi sekolah. Data keuangan terenkripsi end-to-end.</div>
+    </div>
+
+    <div class="info-card" style="border-color:rgba(148,163,184,0.3);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <span style="font-size:28px;">🪑</span>
+        <div>
+          <div style="font-weight:800;font-size:16px;">Tamu</div>
+          <div class="mono" style="font-size:10px;color:#94a3b8;">VLAN 60</div>
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="tag tag-allow">✓ Internet only</div>
+        <div class="tag tag-deny">✗ SEMUA VLAN internal</div>
+        <div class="tag tag-deny">✗ Printer apapun</div>
+        <div class="tag tag-deny">✗ Shared folder</div>
+        <div class="tag tag-deny">✗ Server sekolah</div>
+        <div class="tag tag-limit">⚠ Captive portal login</div>
+        <div class="tag tag-limit">⚠ 5Mbps shared</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">Total isolasi dari jaringan internal. Akses via voucher WiFi atau approval receptionist.</div>
+    </div>
+
+    <div class="info-card" style="border-color:rgba(239,68,68,0.4);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <span style="font-size:28px;">⚙️</span>
+        <div>
+          <div style="font-weight:800;font-size:16px;">IT Admin</div>
+          <div class="mono" style="font-size:10px;color:#ef4444;">VLAN 40 + Akses Khusus</div>
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div class="tag tag-allow">✓ SSH ke semua perangkat</div>
+        <div class="tag tag-allow">✓ Konfigurasi switch/router</div>
+        <div class="tag tag-allow">✓ Akses firewall</div>
+        <div class="tag tag-allow">✓ Server management</div>
+        <div class="tag tag-allow">✓ SNMP monitoring</div>
+        <div class="tag tag-limit">⚠ MFA wajib</div>
+        <div class="tag tag-limit">⚠ Semua sesi dicatat</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">Akses penuh hanya dari terminal management. Semua perubahan konfigurasi dilog dan diaudit.</div>
+    </div>
+  </div>
+
+  <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;">ACL — Access Control List</h3>
+  <div class="info-card">
+    <div style="font-weight:700;margin-bottom:12px;color:#00d4ff;">Contoh Implementasi ACL (Cisco IOS)</div>
+    <div class="acl-block">
+<span class="acl-comment">! === ACL: Blokir Siswa akses ke Guru & Server ===</span>
+ip access-list extended <span class="acl-kw">ACL_SISWA_OUT</span>
+  <span class="acl-comment">! Izinkan akses ke web server sekolah (port 80,443)</span>
+  <span class="acl-permit">permit</span> tcp <span class="acl-net">192.168.10.0</span> 0.0.0.255 <span class="acl-net">192.168.99.10</span> 0.0.0.0 eq 80
+  <span class="acl-permit">permit</span> tcp <span class="acl-net">192.168.10.0</span> 0.0.0.255 <span class="acl-net">192.168.99.10</span> 0.0.0.0 eq 443
+  <span class="acl-comment">! Izinkan DNS internal</span>
+  <span class="acl-permit">permit</span> udp <span class="acl-net">192.168.10.0</span> 0.0.0.255 <span class="acl-net">192.168.99.10</span> 0.0.0.0 eq 53
+  <span class="acl-comment">! Blokir akses ke semua VLAN internal</span>
+  <span class="acl-deny">deny</span>   ip <span class="acl-net">192.168.10.0</span> 0.0.0.255 <span class="acl-net">192.168.30.0</span> 0.0.0.255
+  <span class="acl-deny">deny</span>   ip <span class="acl-net">192.168.10.0</span> 0.0.0.255 <span class="acl-net">192.168.40.0</span> 0.0.0.255
+  <span class="acl-deny">deny</span>   ip <span class="acl-net">192.168.10.0</span> 0.0.0.255 <span class="acl-net">192.168.50.0</span> 0.0.0.255
+  <span class="acl-deny">deny</span>   ip <span class="acl-net">192.168.10.0</span> 0.0.0.255 <span class="acl-net">192.168.99.0</span> 0.0.0.255
+  <span class="acl-comment">! Izinkan ke internet</span>
+  <span class="acl-permit">permit</span> ip <span class="acl-net">192.168.10.0</span> 0.0.0.255 any
+
+<span class="acl-comment">! === ACL: Total Blokir Tamu ke internal ===</span>
+ip access-list extended <span class="acl-kw">ACL_TAMU_OUT</span>
+  <span class="acl-deny">deny</span>   ip <span class="acl-net">192.168.60.0</span> 0.0.0.255 <span class="acl-net">192.168.0.0</span> 0.0.255.255
+  <span class="acl-permit">permit</span> ip <span class="acl-net">192.168.60.0</span> 0.0.0.255 any
+
+<span class="acl-comment">! Terapkan ACL ke sub-interface VLAN 10</span>
+interface Gi0/0.10
+  ip access-group <span class="acl-kw">ACL_SISWA_OUT</span> out
+interface Gi0/0.60
+  ip access-group <span class="acl-kw">ACL_TAMU_OUT</span> out</div>
+  </div>
+</div>
+</div>
+
+<!-- ==================== 05 KEAMANAN ==================== -->
+<div id="keamanan" class="section">
+<div class="container">
+  <p class="section-sub">// Network Security</p>
+  <h2 class="section-title">Pengamanan Akses Jaringan Internal</h2>
+
+  <div class="sec-grid" style="margin-bottom:32px;">
+
+    <div class="sec-card">
+      <div class="sec-icon">🛡️</div>
+      <div class="sec-title">Firewall / UTM</div>
+      <div class="sec-body">Deploy Firewall (pfSense/Palo Alto) sebagai gerbang utama internet. Fitur: stateful inspection, IDS/IPS, web filtering, antivirus gateway, dan VPN termination.</div>
+      <div class="sec-tags">
+        <span class="tag tag-allow">Stateful</span>
+        <span class="tag tag-allow">IDS/IPS</span>
+        <span class="tag tag-allow">Web Filter</span>
+      </div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-icon">🔐</div>
+      <div class="sec-title">802.1X Port Authentication</div>
+      <div class="sec-body">Setiap port switch memerlukan autentikasi sebelum mendapat akses VLAN. Perangkat tidak terdaftar otomatis masuk VLAN Tamu (Guest VLAN). RADIUS server sebagai backend autentikasi.</div>
+      <div class="sec-tags">
+        <span class="tag tag-allow">RADIUS</span>
+        <span class="tag tag-allow">EAP-TLS</span>
+        <span class="tag tag-limit">Auto VLAN</span>
+      </div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-icon">📡</div>
+      <div class="sec-title">WiFi Security — WPA3</div>
+      <div class="sec-body">SSID terpisah per segmen: SSID_GURU (WPA3-Enterprise, VLAN 30), SSID_SISWA (WPA3-SAE, VLAN 10/20), SSID_TAMU (Open+Captive Portal, VLAN 60). Isolasi antar client WiFi aktif.</div>
+      <div class="sec-tags">
+        <span class="tag tag-allow">WPA3</span>
+        <span class="tag tag-allow">Client Isolation</span>
+        <span class="tag tag-limit">Captive Portal</span>
+      </div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-icon">🔒</div>
+      <div class="sec-title">VLAN Hopping Prevention</div>
+      <div class="sec-body">Nonaktifkan DTP (Dynamic Trunking Protocol) di semua access port. Native VLAN diubah ke VLAN tidak terpakai (VLAN 999). Port tidak terpakai dimatikan dan dimasukkan ke VLAN dead.</div>
+      <div class="sec-tags">
+        <span class="tag tag-deny">No DTP</span>
+        <span class="tag tag-deny">Shutdown unused</span>
+        <span class="tag tag-limit">Native VLAN 999</span>
+      </div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-icon">🧩</div>
+      <div class="sec-title">Port Security</div>
+      <div class="sec-body">Batasi jumlah MAC address per port (max 2). Jika MAC baru terdeteksi, port otomatis shutdown (violation mode restrict). Sticky MAC untuk binding perangkat tetap di lab.</div>
+      <div class="sec-tags">
+        <span class="tag tag-allow">Sticky MAC</span>
+        <span class="tag tag-deny">Auto Shutdown</span>
+        <span class="tag tag-limit">Max 2 MAC</span>
+      </div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-icon">📊</div>
+      <div class="sec-title">SNMP Monitoring & Syslog</div>
+      <div class="sec-body">Semua perangkat kirim log ke Syslog server terpusat (VLAN 99). SNMP v3 (terenkripsi) untuk monitoring performa. Dashboard Grafana/Zabbix real-time untuk IT Admin.</div>
+      <div class="sec-tags">
+        <span class="tag tag-allow">SNMPv3</span>
+        <span class="tag tag-allow">Syslog</span>
+        <span class="tag tag-allow">Grafana</span>
+      </div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-icon">🕵️</div>
+      <div class="sec-title">DHCP Snooping & DAI</div>
+      <div class="sec-body">DHCP Snooping mencegah rogue DHCP server di jaringan. Dynamic ARP Inspection (DAI) mencegah ARP spoofing/poisoning antar host dalam satu VLAN.</div>
+      <div class="sec-tags">
+        <span class="tag tag-allow">DHCP Snoop</span>
+        <span class="tag tag-allow">DAI</span>
+        <span class="tag tag-deny">Anti-Spoof</span>
+      </div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-icon">🔑</div>
+      <div class="sec-title">MFA & Password Policy</div>
+      <div class="sec-body">IT Admin wajib Multi-Factor Authentication untuk akses management. Password minimal 12 karakter, rotasi 90 hari. SSH v2 only; Telnet dinonaktifkan sepenuhnya di semua perangkat.</div>
+      <div class="sec-tags">
+        <span class="tag tag-allow">MFA</span>
+        <span class="tag tag-allow">SSHv2 only</span>
+        <span class="tag tag-deny">No Telnet</span>
+      </div>
+    </div>
+
+    <div class="sec-card">
+      <div class="sec-icon">💾</div>
+      <div class="sec-title">Backup & Recovery</div>
+      <div class="sec-body">Konfigurasi perangkat di-backup otomatis setiap malam ke server backup. Data server sekolah: incremental backup harian, full backup mingguan. RTO target: 4 jam, RPO: 24 jam.</div>
+      <div class="sec-tags">
+        <span class="tag tag-allow">Auto Backup</span>
+        <span class="tag tag-limit">RTO 4h</span>
+        <span class="tag tag-limit">RPO 24h</span>
+      </div>
+    </div>
+
+  </div>
+
+  <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;">Checklist Keamanan Implementasi</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;">
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">VLAN Segmentation</div><div class="rule-body">6 VLAN terpisah berdasarkan peran dan area kerja</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">ACL Inter-VLAN</div><div class="rule-body">Kebijakan deny-by-default antar segmen jaringan</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">Firewall Policy</div><div class="rule-body">Stateful inspection + IDS/IPS di gateway internet</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">802.1X Auth</div><div class="rule-body">Port authentication dengan RADIUS server</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">WiFi WPA3</div><div class="rule-body">SSID terpisah per segmen dengan enkripsi kuat</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">Port Security</div><div class="rule-body">MAC binding + auto shutdown port asing</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">DHCP Snooping + DAI</div><div class="rule-body">Cegah rogue DHCP dan ARP spoofing</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">Monitoring Terpusat</div><div class="rule-body">SNMP v3 + Syslog + Dashboard real-time</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">QoS Bandwidth</div><div class="rule-body">Kontrol bandwidth per VLAN mencegah bottleneck</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">Captive Portal Tamu</div><div class="rule-body">Tamu wajib login sebelum akses internet</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">SSH v2 + MFA</div><div class="rule-body">Management aman; Telnet dinonaktifkan</div></div></div>
+    <div class="rule-item"><span class="rule-icon">✅</span><div><div class="rule-title">Backup Otomatis</div><div class="rule-body">Config + data dibackup rutin dengan RTO/RPO jelas</div></div></div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="info-card" style="background:rgba(57,255,20,0.04);border-color:rgba(57,255,20,0.3);">
+    <div style="display:flex;gap:16px;align-items:flex-start;">
+      <span style="font-size:32px;">🎯</span>
+      <div>
+        <div style="font-weight:800;font-size:17px;margin-bottom:8px;color:#39ff14;">Hasil yang Dicapai Setelah Implementasi</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;">
+          <div style="font-size:13px;color:var(--muted);">✅ Broadcast domain terisolasi per VLAN</div>
+          <div style="font-size:13px;color:var(--muted);">✅ Internet stabil saat praktikum berlangsung</div>
+          <div style="font-size:13px;color:var(--muted);">✅ Siswa tidak bisa akses printer/folder guru</div>
+          <div style="font-size:13px;color:var(--muted);">✅ Tamu total terisolasi dari jaringan internal</div>
+          <div style="font-size:13px;color:var(--muted);">✅ IT Admin mudah monitoring seluruh jaringan</div>
+          <div style="font-size:13px;color:var(--muted);">✅ Keamanan berlapis mencegah serangan internal</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
