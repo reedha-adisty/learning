@@ -1048,13 +1048,21 @@ function show(id, btn) {
     <div style="display:flex;align-items:center;gap:14px;">
       <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,rgba(0,212,255,0.2),rgba(168,85,247,0.2));border:1px solid rgba(0,212,255,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;">🔐</div>
       <div>
-        <div style="font-weight:800;font-size:15px;letter-spacing:-0.3px;">Riyadi</div>
+        <div style="font-weight:800;font-size:15px;letter-spacing:-0.3px;display:flex;align-items:center;gap:10px;">
+          <span>Riyadi</span>
+          <span style="width:1px;height:14px;background:var(--border);display:inline-block;"></span>
+          <span>Muhammad Nurfajri</span>
+        </div>
         <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;">Junior Penetration Testing</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <div style="width:6px;height:6px;border-radius:50%;background:var(--accent3);box-shadow:0 0 6px var(--accent3);animation:blink 2s infinite;"></div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px;">SMK Negeri 1 Salam</div>
+      <div style="width:6px;height:6px;border-radius:50%;background:var(--accent3);box-shadow:0 0 6px var(--accent3);animation:blink 2s infinite;flex-shrink:0;"></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.5px;display:flex;align-items:center;gap:8px;">
+        <span>SMK Negeri 1 Salam</span>
+        <span style="color:var(--border);">|</span>
+        <span>SMK Negeri 7 Samarinda</span>
+      </div>
     </div>
     <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;">NETWORK DESIGN DOCUMENTATION</div>
   </div>
