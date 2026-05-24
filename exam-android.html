@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>e-Xam Browser Anti Nyontek Android</title>
+  <style>
+    /* ── FONT STACK (offline-safe) ───────────────────────────── */
+    :root {
+      --font-display: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --font-body:    'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --green-dark:   #1a5c2a;
+      --green-mid:    #2d8a47;
+      --green-light:  #4caf72;
+      --green-pale:   #e8f5ec;
+      --yellow:       #f5c842;
+      --yellow-light: #fef9e7;
+      --white:        #ffffff;
+      --gray-100:     #f8f9fa;
+      --gray-200:     #e9ecef;
+      --gray-700:     #495057;
+      --shadow-sm:    0 2px 8px rgba(0,0,0,.08);
+      --shadow-md:    0 4px 20px rgba(0,0,0,.12);
+      --shadow-lg:    0 8px 32px rgba(0,0,0,.16);
+      --radius:       16px;
+      /* num circle + gap — used to align ujian-grid */
+      --num-w: 28px;
+      --num-gap: 14px;
+      --indent: calc(var(--num-w) + var(--num-gap)); /* 42px */
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: linear-gradient(160deg, #e8f5ec 0%, #fef9e7 50%, #e8f5ec 100%);
+      min-height: 100vh;
+      color: var(--gray-700);
+    }
+
+    /* ── HEADER ───────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 60%, var(--green-light) 100%);
+      color: var(--white);
+      padding: 32px 20px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; left: 0; right: 0;
+      height: 32px;
+      background: var(--gray-100);
+      clip-path: ellipse(55% 100% at 50% 100%);
+    }
+    .header-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    header h1 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+    header h1 .accent { color: var(--yellow); }
+    header p.subtitle {
+      font-size: .82rem;
+      opacity: .88;
+      font-weight: 600;
+      letter-spacing: .02em;
+    }
+
+    /* ── MAIN ─────────────────────────────────────────────── */
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 28px 16px 48px;
+    }
+
+    /* ── SECTION TITLE ────────────────────────────────────── */
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .section-title .icon-circle {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--green-mid), var(--green-dark));
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 1rem;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
+    }
+    .section-title h2 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--green-dark);
+    }
+
+    /* ── QR DOWNLOAD CARDS ────────────────────────────────── */
+    .qr-grid { display: grid; gap: 14px; margin-bottom: 28px; }
+
+    .qr-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      border-left: 4px solid var(--green-mid);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .qr-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+    .qr-img-wrap {
+      flex-shrink: 0;
+      width: 104px; height: 104px;
+      background: #fff;
+      border: 1.5px solid #333;
+      border-radius: 0;
+      overflow: hidden;
+      padding: 4px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .qr-img-wrap canvas,
+    .qr-img-wrap img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      border-radius: 0 !important;
+      image-rendering: pixelated;
+    }
+
+    .qr-info { flex: 1; min-width: 0; }
+    .step-badge {
+      display: inline-block;
+      background: var(--green-dark);
+      color: #fff;
+      font-size: .65rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .qr-info h3 {
+      font-family: var(--font-display);
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--green-dark);
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+    .qr-info p {
+      font-size: .75rem;
+      color: var(--gray-700);
+      opacity: .8;
+      line-height: 1.4;
+    }
+
+    /* ── STEP LIST ────────────────────────────────────────── */
+    .steps-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+    .steps-card-header {
+      background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+      color: #fff;
+      padding: 14px 20px;
+      font-family: var(--font-display);
+      font-size: .95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    ol.step-list {
+      list-style: none;
+      padding: 16px 20px;
+    }
+    ol.step-list > li {
+      display: flex;
+      gap: var(--num-gap);
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    ol.step-list > li:last-child { border-bottom: none; }
+
+    .num {
+      flex-shrink: 0;
+      width: var(--num-w); height: var(--num-w);
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--green-mid), var(--green-dark));
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: .78rem;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(45,138,71,.35);
+    }
+
+    .text {
+      flex: 1;
+      font-size: .85rem;
+      line-height: 1.5;
+      padding-top: 4px;
+      text-align: justify;
+    }
+    .text strong { color: var(--green-dark); }
+
+    /* ── HIGHLIGHT ROWS ───────────────────────────────────── */
+    li.highlight-yellow {
+      background: var(--yellow-light);
+      margin: 0 -20px;
+      padding: 10px 20px !important;
+      border-radius: 8px;
+    }
+    li.highlight-green {
+      background: var(--green-pale);
+      margin: 0 -20px;
+      padding: 10px 20px !important;
+      border-radius: 8px;
+    }
+
+    /* ── STEP 7: UJIAN GRID ───────────────────────────────── */
+    li.step-ujian {
+      flex-direction: column;
+      gap: 8px;
+    }
+    li.step-ujian .step-top {
+      display: flex;
+      gap: var(--num-gap);
+      align-items: flex-start;
+      width: 100%;
+    }
+    li.step-ujian .step-top .text {
+      padding-top: 4px;
+    }
+    /* Grid starts at --indent (42px) from the left edge of the li,
+       then stretches to the right edge of the li (width = 100%). */
+    .ujian-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      /* left margin = num-width + gap so it lines up with text */
+      margin-left: var(--indent);
+      /* right edge = 100% of the li (no extra offset needed) */
+      width: calc(100% - var(--indent));
+    }
+    .ujian-pill {
+      background: linear-gradient(135deg, var(--green-mid), var(--green-dark));
+      color: #fff;
+      border-radius: 8px;
+      padding: 10px 4px;
+      text-align: center;
+      font-family: var(--font-display);
+      font-size: .74rem;
+      font-weight: 700;
+      box-shadow: var(--shadow-sm);
+    }
+    .ujian-pill .kelas {
+      font-size: .88rem;
+      font-weight: 800;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* ── PASSWORD BADGES ─────────────────────────────────── */
+    .pwd-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 6px 0 0;
+    }
+    .pwd-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--green-pale);
+      border: 1.5px solid var(--green-light);
+      border-radius: 10px;
+      padding: 6px 14px;
+      font-family: var(--font-display);
+    }
+    .pwd-badge .label { font-size: .7rem; font-weight: 700; color: var(--green-dark); text-transform: uppercase; letter-spacing: .05em; }
+    .pwd-badge .value { font-size: 1.05rem; font-weight: 800; color: var(--green-dark); letter-spacing: .1em; }
+
+    /* ── FOOTER ──────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      background: var(--green-dark);
+      color: rgba(255,255,255,.75);
+      padding: 18px 16px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+    footer .hl { color: var(--yellow); }
+
+    /* ── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 420px) {
+      header h1 { font-size: 1.2rem; }
+      .qr-card { gap: 12px; }
+      .qr-img-wrap { width: 88px; height: 88px; }
+      .ujian-pill { font-size: .68rem; }
+      .ujian-pill .kelas { font-size: .8rem; }
+    }
+    @media (max-width: 340px) {
+      .qr-card { flex-direction: column; text-align: center; }
+      .qr-img-wrap { margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <h1>&#128274; Panduan Ujian Digital<br><span class="accent">e-Xam Browser</span> Anti Nyontek Android</h1>
+    <p class="subtitle">Asesmen Sumatif Akhir Tahun &nbsp;&middot;&nbsp; Tahun Ajaran 2025/2026</p>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main>
+
+  <!-- QR SECTION -->
+  <div class="section-title">
+    <div class="icon-circle">&#128242;</div>
+    <h2>Scan QR Code untuk Unduhan</h2>
+  </div>
+
+  <div class="qr-grid">
+
+    <div class="qr-card">
+      <div class="qr-img-wrap"><canvas id="qr1"></canvas></div>
+      <div class="qr-info">
+        <span class="step-badge">Langkah 1</span>
+        <h3>Set Simple Keyboard</h3>
+        <p>Tonton panduan pengaturan keyboard di YouTube sebelum melanjutkan.</p>
+      </div>
+    </div>
+
+    <div class="qr-card">
+      <div class="qr-img-wrap"><canvas id="qr2"></canvas></div>
+      <div class="qr-info">
+        <span class="step-badge">Langkah 2</span>
+        <h3>Simple Keyboard (Android)</h3>
+        <p>Unduh &amp; install Simple Keyboard dari tautan ini.</p>
+      </div>
+    </div>
+
+    <div class="qr-card">
+      <div class="qr-img-wrap"><canvas id="qr3"></canvas></div>
+      <div class="qr-info">
+        <span class="step-badge">Langkah 3</span>
+        <h3>Aplikasi Exambrowser (Android)</h3>
+        <p>Unduh &amp; install aplikasi Exambrowser SKANISA untuk ujian.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- STEPS SECTION -->
+  <div class="section-title">
+    <div class="icon-circle">&#128203;</div>
+    <h2>Langkah-Langkah Pengerjaan</h2>
+  </div>
+
+  <div class="steps-card">
+    <div class="steps-card-header">&#128221; Ikuti langkah berikut dengan urut</div>
+    <ol class="step-list">
+
+      <li>
+        <div class="num">1</div>
+        <div class="text">Lihat panduan <strong>Set Simple Keyboard</strong> (Youtube) &mdash; scan QR di atas.</div>
+      </li>
+
+      <li>
+        <div class="num">2</div>
+        <div class="text">Unduh dan install <strong>Simple Keyboard</strong> (Android) &mdash; scan QR di atas.</div>
+      </li>
+
+      <li>
+        <div class="num">3</div>
+        <div class="text">Unduh dan install <strong>Aplikasi Exambrowser</strong> (Android) &mdash; scan QR di atas.</div>
+      </li>
+
+      <li>
+        <div class="num">4</div>
+        <div class="text">Jalankan aplikasi dengan klik icon aplikasi <strong>SKANISA</strong>.</div>
+      </li>
+
+      <li class="highlight-yellow">
+        <div class="num">5</div>
+        <div class="text">
+          <strong>Password login:</strong>
+          <div class="pwd-row">
+            <div class="pwd-badge">
+              <span class="label">Login</span>
+              <span class="value">1987</span>
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <li>
+        <div class="num">6</div>
+        <div class="text">Klik <strong>Lanjutkan</strong>.</div>
+      </li>
+
+      <li class="step-ujian">
+        <div class="step-top">
+          <div class="num">7</div>
+          <div class="text">Pilih server ujian sesuai kelas:</div>
+        </div>
+        <div class="ujian-grid">
+          <div class="ujian-pill"><span class="kelas">Kelas 10</span>E-UJIAN 1</div>
+          <div class="ujian-pill"><span class="kelas">Kelas 11</span>E-UJIAN 2</div>
+          <div class="ujian-pill"><span class="kelas">Kelas 12</span>E-UJIAN 3</div>
+        </div>
+      </li>
+
+      <li>
+        <div class="num">8</div>
+        <div class="text">Pilih <strong>mode layar HP</strong>.</div>
+      </li>
+
+      <li>
+        <div class="num">9</div>
+        <div class="text">
+          <strong>Isi Form Ujian</strong> &mdash; Lengkapi data diri: Nomor Peserta, Nama Lengkap, Pilih Kelas, dan <strong>Token</strong>.
+          <br><em style="font-size:.78rem;color:#666">Token diberikan oleh Pengawas Ruang.</em>
+        </div>
+      </li>
+
+      <li>
+        <div class="num">10</div>
+        <div class="text">Soal ujian akan muncul secara otomatis di layar. <strong>Baca dengan teliti</strong> sebelum menjawab.</div>
+      </li>
+
+      <li class="highlight-green">
+        <div class="num">11</div>
+        <div class="text">Kerjakan soal dengan <strong>jujur</strong>, klik <strong>Kirim</strong> saat sudah selesai, lalu tunggu konfirmasi pengumpulan ujian.<br><em style="font-size:.8rem">&#127775; Selamat mengerjakan!</em></div>
+      </li>
+
+      <li class="highlight-yellow">
+        <div class="num">12</div>
+        <div class="text">
+          <strong>Password logout:</strong>
+          <div class="pwd-row">
+            <div class="pwd-badge">
+              <span class="label">Logout</span>
+              <span class="value">2505</span>
+            </div>
+          </div>
+        </div>
+      </li>
+
+    </ol>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <span class="hl">SMK Negeri 1 Salam</span> &nbsp;&middot;&nbsp;
+  Magelang, Jawa Tengah &nbsp;&middot;&nbsp;
+  <span class="hl">TA 2025 / 2026</span>
+</footer>
+
+<!-- INLINE QR ENGINE (no external dependency, works offline) -->
+<script>
+/* ── Minimal QR encoder (pure JS, offline-safe) ─────────────────────────────
+   Derived from public-domain QR implementations. Supports UTF-8 byte mode.
+   Usage: drawQR(canvasEl, text, moduleSize)
+──────────────────────────────────────────────────────────────────────────── */
+(function(w){
+'use strict';
+var QRMode={MODE_8BIT:4},QRErrorLevel={M:0},
+GF=function(){var t=[],e=1;for(var i=0;i<255;i++){t[i]=e;e<<=1;if(e&256)e^=285}return t}(),
+GFi=function(){var t=[];for(var i=0;i<256;i++)t[GF[i]]=i;return t}();
+function gfMul(a,b){if(!a||!b)return 0;return GF[(GFi[a]+GFi[b])%255]}
+function gfPow(a,b){return GF[(GFi[a]*b)%255]}
+function gfPoly(deg){var p=[1];for(var i=0;i<deg;i++){var q=[1,gfPow(2,i)];var r=new Array(p.length+q.length-1).fill(0);for(var j=0;j<p.length;j++)for(var k=0;k<q.length;k++)r[j+k]^=gfMul(p[j],q[k]);p=r}return p}
+function ecBytes(data,nec){var g=gfPoly(nec);var msg=data.concat(new Array(nec).fill(0));for(var i=0;i<data.length;i++){var c=msg[i];if(c)for(var j=0;j<g.length;j++)msg[i+j]^=gfMul(g[j],c)}return msg.slice(data.length)}
+// QR version lookup [version-1][ecc-level-index] => {ec_blocks, data_codewords, total_codewords}
+// Only versions 1-10, ECC M
+var VCAP=[
+ {v:1,cap:16},{v:2,cap:28},{v:3,cap:44},{v:4,cap:64},{v:5,cap:86},
+ {v:6,cap:108},{v:7,cap:124},{v:8,cap:154},{v:9,cap:182},{v:10,cap:216}
+];
+// ECC M block info per version
+var ECCM=[
+ {ec:10,b1:1,d1:16},{ec:16,b1:1,d1:28},{ec:26,b1:1,d1:44},{ec:18,b1:2,d1:32},
+ {ec:24,b1:2,d1:43},{ec:16,b1:4,d1:27},{ec:18,b1:4,d1:31},{ec:22,b1:2,d1:38,b2:2,d2:14},
+ {ec:22,b1:3,d1:36,b2:2,d2:13},{ec:26,b1:4,d1:43,b2:1,d2:16}
+];
+function getVersion(n){for(var i=0;i<VCAP.length;i++)if(VCAP[i].cap>=n)return i+1;throw'Data too long'}
+function encode(text){
+ var bytes=[];
+ for(var i=0;i<text.length;i++){
+  var c=text.charCodeAt(i);
+  if(c<128){bytes.push(c)}
+  else if(c<2048){bytes.push(0xC0|(c>>6));bytes.push(0x80|(c&63))}
+  else{bytes.push(0xE0|(c>>12));bytes.push(0x80|((c>>6)&63));bytes.push(0x80|(c&63))}
+ }
+ var ver=getVersion(bytes.length);
+ var inf=ECCM[ver-1];
+ // build data bitstream
+ var bits=[];
+ function addBits(val,len){for(var i=len-1;i>=0;i--)bits.push((val>>i)&1)}
+ addBits(4,4); // mode byte
+ addBits(bytes.length,8);
+ for(var i=0;i<bytes.length;i++)addBits(bytes[i],8);
+ addBits(0,4); // terminator
+ while(bits.length%8)bits.push(0);
+ var pads=[0xEC,0x11];var pi=0;
+ var total=(inf.b1*inf.d1+((inf.b2||0)*(inf.d2||0)));
+ while(bits.length<total*8){addBits(pads[pi++%2],8)}
+ // split into codewords
+ var cws=[];for(var i=0;i<bits.length;i+=8){var b=0;for(var j=0;j<8;j++)b=(b<<1)|bits[i+j];cws.push(b)}
+ // generate blocks
+ var blocks=[];var pos=0;
+ for(var i=0;i<inf.b1;i++){var d=cws.slice(pos,pos+inf.d1);pos+=inf.d1;blocks.push({d:d,e:ecBytes(d,inf.ec)})}
+ if(inf.b2)for(var i=0;i<inf.b2;i++){var d=cws.slice(pos,pos+inf.d2);pos+=inf.d2;blocks.push({d:d,e:ecBytes(d,inf.ec)})}
+ // interleave
+ var final=[];
+ var maxd=Math.max.apply(null,blocks.map(function(b){return b.d.length}));
+ for(var i=0;i<maxd;i++)for(var j=0;j<blocks.length;j++)if(i<blocks[j].d.length)final.push(blocks[j].d[i]);
+ var maxe=blocks[0].e.length;
+ for(var i=0;i<maxe;i++)for(var j=0;j<blocks.length;j++)final.push(blocks[j].e[i]);
+ return{codewords:final,version:ver};
+}
+
+// Matrix builder
+function buildMatrix(ver){
+ var size=ver*4+17;
+ var m=[];for(var i=0;i<size;i++){m.push([]);for(var j=0;j<size;j++)m[i].push(null)}
+ var isFunc=[];for(var i=0;i<size;i++){isFunc.push([]);for(var j=0;j<size;j++)isFunc[i].push(false)}
+ function setFunc(r,c,v){m[r][c]=v?1:0;isFunc[r][c]=true}
+ // finder patterns
+ function finder(r,c){
+  for(var dr=-1;dr<=7;dr++)for(var dc=-1;dc<=7;dc++){
+   var nr=r+dr,nc=c+dc;
+   if(nr<0||nr>=size||nc<0||nc>=size)continue;
+   var inSquare=(dr>=0&&dr<=6&&dc>=0&&dc<=6);
+   var onBorder=(dr===0||dr===6||dc===0||dc===6);
+   var inner=(dr>=2&&dr<=4&&dc>=2&&dc<=4);
+   setFunc(nr,nc,inSquare&&(onBorder||inner));
+  }
+ }
+ finder(0,0);finder(0,size-7);finder(size-7,0);
+ // separators already covered by finder -1 offset
+ // timing
+ for(var i=8;i<size-8;i++){setFunc(6,i,(i%2===0));setFunc(i,6,(i%2===0))}
+ // dark module
+ setFunc(4*ver+9,8,1);
+ // format info placeholders
+ for(var i=0;i<=5;i++){setFunc(i,8,false);setFunc(8,i,false)}
+ setFunc(7,8,false);setFunc(8,7,false);setFunc(8,8,false);
+ for(var i=size-8;i<size;i++){setFunc(8,i,false);setFunc(i,8,false)}
+ // alignment patterns (ver>=2)
+ var ALIGN=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50]];
+ if(ver>=2){var pos=ALIGN[ver-1];
+  for(var i=0;i<pos.length;i++)for(var j=0;j<pos.length;j++){
+   var r=pos[i],c=pos[j];
+   if(isFunc[r][c])continue;
+   for(var dr=-2;dr<=2;dr++)for(var dc=-2;dc<=2;dc++)setFunc(r+dr,c+dc,Math.max(Math.abs(dr),Math.abs(dc))!==1);
+  }
+ }
+ return{m:m,isFunc:isFunc,size:size};
+}
+function placeData(mat,codewords){
+ var size=mat.size,m=mat.m,isFunc=mat.isFunc;
+ var bits=[];
+ for(var i=0;i<codewords.length;i++)for(var j=7;j>=0;j--)bits.push((codewords[i]>>j)&1);
+ var bi=0;
+ for(var right=size-1;right>=1;right-=2){
+  if(right===6)right=5;
+  for(var vert=0;vert<size;vert++){
+   for(var j=0;j<2;j++){
+    var c=right-j,r=(right===5||((right+1)%4<2))?size-1-vert:vert;
+    // direction: upward when (right+1)%4>=2
+    var goUp=((Math.floor((size-1-right)/2))%2===0);
+    r=goUp?size-1-vert:vert;
+    if(!isFunc[r][c]&&bi<bits.length){m[r][c]=bits[bi++]^0}
+   }
+  }
+ }
+ // data placement (zigzag)
+ bi=0;
+ var right2=size-1;
+ var goUp2=true;
+ while(right2>=1){
+  if(right2===6)right2--;
+  var col2=right2;
+  for(var i=0;i<size;i++){
+   var row2=goUp2?(size-1-i):i;
+   for(var j2=0;j2<2;j2++){
+    var c2=col2-j2;
+    if(!isFunc[row2][c2]){m[row2][c2]=(bi<bits.length)?bits[bi++]:0}
+   }
+  }
+  goUp2=!goUp2;right2-=2;
+ }
+}
+function applyMask(mat,mask){
+ var size=mat.size,m=mat.m,isFunc=mat.isFunc;
+ for(var r=0;r<size;r++)for(var c=0;c<size;c++){
+  if(isFunc[r][c])continue;
+  var inv;
+  switch(mask){
+   case 0:inv=(r+c)%2===0;break;case 1:inv=r%2===0;break;
+   case 2:inv=c%3===0;break;case 3:inv=(r+c)%3===0;break;
+   case 4:inv=(Math.floor(r/2)+Math.floor(c/3))%2===0;break;
+   case 5:inv=(r*c)%2+(r*c)%3===0;break;
+   case 6:inv=((r*c)%2+(r*c)%3)%2===0;break;
+   case 7:inv=((r+c)%2+(r*c)%3)%2===0;break;
+  }
+  if(inv)m[r][c]^=1;
+ }
+}
+function setFormatBits(mat,mask){
+ var size=mat.size,m=mat.m;
+ // ECC level M = 00, mask = mask (3 bits)
+ var data=(0b01<<3)|mask; // M=01
+ var rem=data;
+ for(var i=0;i<10;i++)rem=(rem<<1)^((rem>>9)*0x537);
+ var full=((data<<10)|rem)^0x5412;
+ function setFmt(r,c,bit){m[r][c]=(full>>bit)&1}
+ var bits=[0,1,2,3,4,5,7,8,size-7,size-6,size-5,size-4,size-3,size-2,size-1];
+ for(var i=0;i<6;i++){setFmt(8,i,i);setFmt(i,8,i)}
+ setFmt(8,7,6);setFmt(7,8,6);setFmt(8,8,7);
+ for(var i=0;i<7;i++){setFmt(size-1-i,8,i);setFmt(8,size-8+i,14-i)}
+}
+function penalty(m,size){
+ var p=0;
+ for(var r=0;r<size;r++){var run=1;for(var c=1;c<size;c++){if(m[r][c]===m[r][c-1])run++;else{if(run>=5)p+=run-2;run=1}}if(run>=5)p+=run-2}
+ for(var c=0;c<size;c++){var run=1;for(var r=1;r<size;r++){if(m[r][c]===m[r-1][c])run++;else{if(run>=5)p+=run-2;run=1}}if(run>=5)p+=run-2}
+ for(var r=0;r<size-1;r++)for(var c=0;c<size-1;c++)if(m[r][c]===m[r][c+1]&&m[r][c]===m[r+1][c]&&m[r][c]===m[r+1][c+1])p+=3;
+ return p;
+}
+
+w.drawQR=function(canvas,text,moduleSize,dark,light){
+ dark=dark||'#1a3a1a';light=light||'#ffffff';
+ moduleSize=moduleSize||4;
+ var enc=encode(text);
+ var ver=enc.version;
+ var mat=buildMatrix(ver);
+ // find best mask
+ var best=null,bestP=Infinity;
+ for(var mask=0;mask<8;mask++){
+  var mc=JSON.parse(JSON.stringify(mat.m));
+  var matC={m:mc,isFunc:mat.isFunc,size:mat.size};
+  placeData(matC,enc.codewords);
+  applyMask(matC,mask);
+  setFormatBits(matC,mask);
+  var p=penalty(mc,mat.size);
+  if(p<bestP){bestP=p;best={m:mc,mask:mask}}
+ }
+ var size=mat.size;
+ var px=size*moduleSize;
+ canvas.width=px;canvas.height=px;
+ var ctx=canvas.getContext('2d');
+ ctx.fillStyle=light;ctx.fillRect(0,0,px,px);
+ ctx.fillStyle=dark;
+ for(var r=0;r<size;r++)for(var c=0;c<size;c++)if(best.m[r][c])ctx.fillRect(c*moduleSize,r*moduleSize,moduleSize,moduleSize);
+};
+})(window);
+</script>
+<script>
+  var qrData = [
+    { id: 'qr1', text: 'https://youtu.be/SimpleKeyboardSetup' },
+    { id: 'qr2', text: 'https://play.google.com/store/apps/details?id=rkr.simplekeyboard.inputmethod' },
+    { id: 'qr3', text: 'https://smkn1salam.sch.id/exambrowser' },
+  ];
+  qrData.forEach(function(q) {
+    var c = document.getElementById(q.id);
+    if (c) drawQR(c, q.text, 3, '#1a3a1a', '#ffffff');
+  });
+</script>
+
+</body>
+</html>
